@@ -5,6 +5,7 @@
 .vercel
 .next
 node_modules
+.pnpm-store/
 DerivedData
 *.tsbuildinfo
 *.xcuserstate
