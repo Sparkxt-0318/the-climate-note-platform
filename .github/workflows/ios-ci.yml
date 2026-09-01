@@ -1,0 +1,31 @@
+name: iOS checks
+
+on:
+  pull_request:
+    paths:
+      - "apps/ios/**"
+      - "scripts/generate_xcodeproj.rb"
+      - ".github/workflows/ios-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve packages
+        working-directory: apps/ios
+        run: xcodebuild -resolvePackageDependencies -project ClimateNote.xcodeproj -scheme ClimateNote
+      - name: Build for simulator
+        working-directory: apps/ios
+        run: >-
+          xcodebuild
+          -project ClimateNote.xcodeproj
+          -scheme ClimateNote
+          -configuration Debug
+          -destination 'generic/platform=iOS Simulator'
+          CODE_SIGNING_ALLOWED=NO
+          build

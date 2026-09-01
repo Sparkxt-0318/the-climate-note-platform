@@ -1,0 +1,12 @@
+{
+  "name": "the-climate-note",
+  "private": true,
+  "packageManager": "pnpm@11.19.0",
+  "scripts": {
+    "build": "pnpm --filter @climate-note/web build",
+    "dev": "pnpm --filter @climate-note/web dev",
+    "lint": "pnpm --filter @climate-note/web lint",
+    "test": "pnpm --filter @climate-note/web test",
+    "typecheck": "pnpm --filter @climate-note/web typecheck"
+  }
+}

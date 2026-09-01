@@ -1,0 +1,42 @@
+{
+  "name": "@climate-note/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint . --max-warnings=0",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@google/genai": "2.19.0",
+    "@vercel/blob": "^2.8.0",
+    "cheerio": "1.2.0",
+    "firebase": "12.18.0",
+    "firebase-admin": "13.5.0",
+    "groq-sdk": "1.6.0",
+    "mammoth": "1.12.1",
+    "next": "16.3.3",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "sanitize-html": "2.17.7",
+    "sharp": "0.35.4",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "26.4.0",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.3",
+    "@types/sanitize-html": "2.16.1",
+    "eslint": "9.39.1",
+    "eslint-config-next": "16.3.3",
+    "typescript": "6.0.3",
+    "vitest": "4.1.11"
+  }
+}

@@ -1,0 +1,6 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Firebase's generated iOS configuration contains a public client API identifier, not a server credential."
+paths = ['''apps/ios/ClimateNote/Support/GoogleService-Info\.plist''']
