@@ -14,7 +14,7 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "F4DBB11D491187C1395553F4"
+               BlueprintIdentifier = "FE03393022C0D7D9507410DE"
                BuildableName = "ClimateNote.app"
                BlueprintName = "ClimateNote"
                ReferencedContainer = "container:ClimateNote.xcodeproj">
@@ -30,7 +30,7 @@
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "F4DBB11D491187C1395553F4"
+            BlueprintIdentifier = "FE03393022C0D7D9507410DE"
             BuildableName = "ClimateNote.app"
             BlueprintName = "ClimateNote"
             ReferencedContainer = "container:ClimateNote.xcodeproj">
@@ -41,7 +41,7 @@
             skipped = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "91D6EF0003CCC0BE8D94DC60"
+               BlueprintIdentifier = "2639E484A3C93362DF0AC99B"
                BuildableName = "ClimateNoteTests.xctest"
                BlueprintName = "ClimateNoteTests"
                ReferencedContainer = "container:ClimateNote.xcodeproj">
@@ -63,7 +63,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "F4DBB11D491187C1395553F4"
+            BlueprintIdentifier = "FE03393022C0D7D9507410DE"
             BuildableName = "ClimateNote.app"
             BlueprintName = "ClimateNote"
             ReferencedContainer = "container:ClimateNote.xcodeproj">
@@ -80,7 +80,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "F4DBB11D491187C1395553F4"
+            BlueprintIdentifier = "FE03393022C0D7D9507410DE"
             BuildableName = "ClimateNote.app"
             BlueprintName = "ClimateNote"
             ReferencedContainer = "container:ClimateNote.xcodeproj">

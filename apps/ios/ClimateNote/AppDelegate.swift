@@ -32,6 +32,10 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         Messaging.messaging().apnsToken = deviceToken
     }
 
+    nonisolated func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
+        // Topic subscriptions are managed by NotificationService when the reader opts in.
+    }
+
     nonisolated func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification

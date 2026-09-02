@@ -19,6 +19,9 @@ jobs:
       - name: Resolve packages
         working-directory: apps/ios
         run: xcodebuild -resolvePackageDependencies -project ClimateNote.xcodeproj -scheme ClimateNote
+      - name: Verify App Store release metadata
+        run: |
+          ./scripts/static_preflight.sh --ios-only
       - name: Build for simulator
         working-directory: apps/ios
         run: >-
@@ -29,3 +32,8 @@ jobs:
           -destination 'generic/platform=iOS Simulator'
           CODE_SIGNING_ALLOWED=NO
           build
+      - name: Verify built product is iPhone-only
+        run: |
+          app_info=$(find "$HOME/Library/Developer/Xcode/DerivedData" -path '*Debug-iphonesimulator/The Climate Note.app/Info.plist' -print -quit)
+          test -n "$app_info"
+          ./scripts/verify_ios_product.sh "$app_info"

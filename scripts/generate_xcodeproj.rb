@@ -15,6 +15,17 @@ app_target = project.new_target(:application, "ClimateNote", :ios, "17.0")
 test_target = project.new_target(:unit_test_bundle, "ClimateNoteTests", :ios, "17.0")
 test_target.add_dependency(app_target)
 
+project.root_object.attributes["TargetAttributes"] = {
+  app_target.uuid => {
+    "CreatedOnToolsVersion" => "26.0",
+    "SystemCapabilities" => {
+      "com.apple.Push" => { "enabled" => 1 },
+      "com.apple.SignInWithApple" => { "enabled" => 1 }
+    }
+  },
+  test_target.uuid => { "CreatedOnToolsVersion" => "26.0" }
+}
+
 app_group = project.main_group.new_group("ClimateNote", "ClimateNote")
 test_group = project.main_group.new_group("ClimateNoteTests", "ClimateNoteTests")
 
@@ -86,7 +97,7 @@ app_target.build_configurations.each do |config|
     "INFOPLIST_FILE" => "ClimateNote/Support/Info.plist",
     "CODE_SIGN_ENTITLEMENTS" => "ClimateNote/Support/ClimateNote.entitlements",
     "CODE_SIGN_STYLE" => config.name == "Release" ? "Manual" : "Automatic",
-    "CURRENT_PROJECT_VERSION" => "2",
+    "CURRENT_PROJECT_VERSION" => "3",
     "CLIMATE_NOTE_API_BASE_URL" => "https://the-climate-note.vercel.app",
     "REVERSED_CLIENT_ID" => reversed_client_id,
     "APS_ENVIRONMENT" => push_environment,
@@ -96,6 +107,8 @@ app_target.build_configurations.each do |config|
     "SWIFT_VERSION" => "6.0",
     "SWIFT_STRICT_CONCURRENCY" => "complete",
     "TARGETED_DEVICE_FAMILY" => "1",
+    "SUPPORTS_MACCATALYST" => "NO",
+    "SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD" => "NO",
     "ASSETCATALOG_COMPILER_APPICON_NAME" => "AppIcon",
     "ENABLE_USER_SCRIPT_SANDBOXING" => "YES"
   }
