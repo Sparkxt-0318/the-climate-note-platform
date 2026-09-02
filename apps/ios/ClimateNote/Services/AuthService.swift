@@ -11,6 +11,7 @@ import UIKit
 final class AuthService: NSObject, ObservableObject {
     @Published private(set) var user: User?
     @Published private(set) var isWorking = false
+    @Published private(set) var isAuthenticationAvailable = false
     @Published var errorMessage: String?
     private var authHandle: AuthStateDidChangeListenerHandle?
     private var currentNonce: String?
@@ -22,7 +23,12 @@ final class AuthService: NSObject, ObservableObject {
 
     func start() {
         guard authHandle == nil else { return }
-        guard FirebaseApp.app() != nil else { return }
+        guard FirebaseApp.app() != nil else {
+            isAuthenticationAvailable = false
+            errorMessage = "Sign-in is temporarily unavailable. You can continue reading and try again later."
+            return
+        }
+        isAuthenticationAvailable = true
         user = Auth.auth().currentUser
         authHandle = Auth.auth().addStateDidChangeListener { [weak self] _, user in
             Task { @MainActor in self?.user = user }
@@ -30,17 +36,19 @@ final class AuthService: NSObject, ObservableObject {
     }
 
     func signInWithGoogle() async {
+        guard beginAuthentication() else { return }
         isWorking = true
         defer { isWorking = false }
         do {
             let authorization = try await googleAuthorization()
             try await Auth.auth().signIn(with: authorization.credential)
         } catch {
-            show(error)
+            show(error, fallback: "Google Sign-In could not be completed. Please check your connection and try again.")
         }
     }
 
     func configureAppleSignIn(_ request: ASAuthorizationAppleIDRequest) {
+        guard beginAuthentication() else { return }
         let nonce = Self.randomNonce()
         currentNonce = nonce
         appleOperation = .signIn
@@ -135,6 +143,7 @@ final class AuthService: NSObject, ObservableObject {
         guard let clientID = FirebaseApp.app()?.options.clientID else {
             throw AuthError.missingGoogleClientID
         }
+        await Task.yield()
         guard let presentingViewController else { throw AuthError.googleAuthorizationCouldNotStart }
         GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
         let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: presentingViewController)
@@ -225,6 +234,18 @@ final class AuthService: NSObject, ObservableObject {
         errorMessage = fallback ?? error.localizedDescription
     }
 
+    private func beginAuthentication() -> Bool {
+        guard !isWorking else { return false }
+        errorMessage = nil
+        guard FirebaseApp.app() != nil else {
+            isAuthenticationAvailable = false
+            errorMessage = "Sign-in is temporarily unavailable. You can continue reading and try again later."
+            return false
+        }
+        isAuthenticationAvailable = true
+        return true
+    }
+
     private enum AuthError: LocalizedError {
         case missingGoogleClientID
         case missingGoogleIDToken
@@ -257,14 +278,24 @@ final class AuthService: NSObject, ObservableObject {
     }
 
     private var presentingViewController: UIViewController? {
-        let root = UIApplication.shared.connectedScenes
+        let scenes = UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }
-            .flatMap(\.windows)
-            .first(where: \.isKeyWindow)?
-            .rootViewController
-        var current = root
-        while let presented = current?.presentedViewController { current = presented }
-        return current
+            .filter { $0.activationState == .foregroundActive }
+        let windows = scenes.flatMap(\.windows)
+        let window = windows.first(where: \.isKeyWindow)
+            ?? windows.first(where: { !$0.isHidden && $0.alpha > 0 })
+        var current = window?.rootViewController
+        while true {
+            if let presented = current?.presentedViewController {
+                current = presented
+            } else if let navigation = current as? UINavigationController {
+                current = navigation.visibleViewController
+            } else if let tabs = current as? UITabBarController {
+                current = tabs.selectedViewController
+            } else {
+                return current
+            }
+        }
     }
 }
 
@@ -281,7 +312,7 @@ extension AuthService: ASAuthorizationControllerDelegate {
         isWorking = false
         currentNonce = nil
         appleOperation = .signIn
-        show(error)
+        show(error, fallback: "Sign in with Apple could not be completed. Please try again.")
     }
 }
 
@@ -289,7 +320,13 @@ extension AuthService: ASAuthorizationControllerPresentationContextProviding {
     func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
         UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }
+            .filter { $0.activationState == .foregroundActive }
             .flatMap(\.windows)
-            .first(where: \.isKeyWindow) ?? ASPresentationAnchor()
+            .first(where: \.isKeyWindow)
+            ?? UIApplication.shared.connectedScenes
+                .compactMap { $0 as? UIWindowScene }
+                .flatMap(\.windows)
+                .first(where: { !$0.isHidden && $0.alpha > 0 })
+            ?? ASPresentationAnchor()
     }
 }

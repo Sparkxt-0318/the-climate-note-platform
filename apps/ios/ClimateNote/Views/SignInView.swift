@@ -24,13 +24,22 @@ struct SignInView: View {
                 .signInWithAppleButtonStyle(.black)
                 .frame(height: 52)
                 .clipShape(.rect(cornerRadius: 12))
+                .disabled(auth.isWorking || !auth.isAuthenticationAvailable)
 
                 GoogleButton {
                     Task { await auth.signInWithGoogle() }
                 }
                 .frame(maxWidth: .infinity)
                 .frame(height: 52)
+                .disabled(auth.isWorking || !auth.isAuthenticationAvailable)
                 .accessibilityHint("Signs in securely using your Google account.")
+
+                if !auth.isAuthenticationAvailable {
+                    Label("Sign-in is temporarily unavailable. You can keep reading and try again later.", systemImage: "wifi.exclamationmark")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
 
                 VStack(spacing: 5) {
                     Text("By continuing, you agree to the privacy practices shown in the app.")
@@ -43,7 +52,10 @@ struct SignInView: View {
             .overlay { if auth.isWorking { ProgressView().controlSize(.large) } }
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Not now") { dismiss() } } }
             .onChange(of: auth.user?.uid) { _, userID in if userID != nil { dismiss() } }
-            .alert("Sign-in problem", isPresented: .constant(auth.errorMessage != nil)) {
+            .alert("Sign-in problem", isPresented: Binding(
+                get: { auth.errorMessage != nil },
+                set: { if !$0 { auth.errorMessage = nil } }
+            )) {
                 Button("OK") { auth.errorMessage = nil }
             } message: {
                 Text(auth.errorMessage ?? "Please try again.")
