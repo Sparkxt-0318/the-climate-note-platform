@@ -15,27 +15,27 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@google/genai": "2.19.0",
+    "@google/genai": "2.21.0",
     "@vercel/blob": "^2.8.0",
     "cheerio": "1.2.0",
     "firebase": "12.18.0",
-    "firebase-admin": "13.5.0",
+    "firebase-admin": "13.10.0",
     "groq-sdk": "1.6.0",
-    "mammoth": "1.12.1",
-    "next": "16.3.3",
+    "mammoth": "1.12.2",
+    "next": "16.3.4",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "sanitize-html": "2.17.7",
     "sharp": "0.35.4",
-    "zod": "4.4.3"
+    "zod": "4.5.4"
   },
   "devDependencies": {
-    "@types/node": "26.4.0",
+    "@types/node": "26.4.1",
     "@types/react": "19.2.18",
-    "@types/react-dom": "19.2.3",
+    "@types/react-dom": "19.2.7",
     "@types/sanitize-html": "2.16.1",
     "eslint": "9.39.1",
-    "eslint-config-next": "16.3.3",
+    "eslint-config-next": "16.3.4",
     "typescript": "6.0.3",
     "vitest": "4.1.11"
   }
