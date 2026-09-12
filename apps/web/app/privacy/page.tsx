@@ -10,7 +10,7 @@ export default function PrivacyPage() {
     <article className="legal-shell">
       <p className="eyebrow">Privacy policy</p>
       <h1>Your notes belong to you.</h1>
-      <p className="legal-updated">Effective August 29, 2026</p>
+      <p className="legal-updated">Effective September 12, 2026</p>
 
       <section>
         <h2>What this policy covers</h2>
@@ -50,6 +50,18 @@ export default function PrivacyPage() {
           Notes, show your progress, calculate clearly labeled estimates for supported actions, send
           notifications you explicitly enable, provide data exports, prevent abuse, and respond to
           support requests. Private reflections are not used to train public AI models.
+        </p>
+      </section>
+
+      <section>
+        <h2>Community impact totals</h2>
+        <p>
+          Completed actions contribute to public, all-time community totals. We publish only a
+          combined action count and a clearly labeled estimate for supported actions, not names,
+          account identifiers, individual activity, or reflection text. Completions are self-reported,
+          not independently verified. Repeated saves of the same article action completed on the
+          same UTC day count once. Custom actions count toward participation but have no carbon
+          estimate. Totals refresh daily; deleted action history is removed on the next refresh.
         </p>
       </section>
 

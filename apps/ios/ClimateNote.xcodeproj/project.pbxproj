@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+        C011EC710000000000000001 /* CommunityImpactView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C011EC710000000000000002 /* CommunityImpactView.swift */; };
 		0E8F11622271804ACE4DE703 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2056FA5A8472FFA7377E74B7 /* NotificationService.swift */; };
 		1036F269BA2573DA08ED0355 /* ReflectionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33612DFB4BD5E8F233F4A71C /* ReflectionStore.swift */; };
 		163A6AF11F82C9302C5D3D19 /* Article.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6801A063030360580180A137 /* Article.swift */; };
@@ -50,6 +51,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+        C011EC710000000000000002 /* CommunityImpactView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CommunityImpactView.swift; path = Views/CommunityImpactView.swift; sourceTree = "<group>"; };
 		07566CE5242B3D5BBB648EC2 /* ArticleStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ArticleStore.swift; path = Services/ArticleStore.swift; sourceTree = "<group>"; };
 		0E0091B7E742FB62C625D243 /* MyNoteView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = MyNoteView.swift; path = Views/MyNoteView.swift; sourceTree = "<group>"; };
 		2056FA5A8472FFA7377E74B7 /* NotificationService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = NotificationService.swift; path = Services/NotificationService.swift; sourceTree = "<group>"; };
@@ -115,6 +117,7 @@
 		4D27B990BA7CCCBD28745363 /* ClimateNote */ = {
 			isa = PBXGroup;
 			children = (
+                C011EC710000000000000002 /* CommunityImpactView.swift */,
 				9640E596B1EC401DA240EB10 /* AppDelegate.swift */,
 				21FC929DA02E5F7B7D9A4929 /* ClimateNoteApp.swift */,
 				6A65BD0D659B1193FABA3411 /* ClimateTheme.swift */,
@@ -322,6 +325,7 @@
 				B5BA8E0EA9E6F773BEA6DE92 /* FeedView.swift in Sources */,
 				DF49B6CFEFA4C97165443CED /* MyNoteView.swift in Sources */,
 				DCAFB4AAD1A1A39C72837A63 /* RootView.swift in Sources */,
+                C011EC710000000000000001 /* CommunityImpactView.swift in Sources */,
 				B30989351FECE3258783AE1A /* ScreenshotRootView.swift in Sources */,
 				9AB2E7B94F4D25DA9E7BBA83 /* SignInView.swift in Sources */,
 			);
