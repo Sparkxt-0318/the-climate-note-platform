@@ -16,7 +16,7 @@ struct Article: Codable, Identifiable, Hashable, Sendable {
     let readingMinutes: Int
     let publishedAt: Date?
     let generation: ArticleGeneration?
-    let coverAsset: CoverAsset?
+    var coverAsset: CoverAsset?
 }
 
 struct ExternalLinks: Codable, Hashable, Sendable {
@@ -86,6 +86,60 @@ struct CoverAsset: Codable, Hashable, Sendable {
     let license: String
     let sourceUrl: URL?
     let generated: Bool
+    /// Editorial provenance is additive so articles published before the
+    /// approved-photo pipeline remain readable.
+    let provider: String?
+    let providerAssetId: String?
+    let photographer: String?
+    let licenseUrl: URL?
+    let crop: CoverCrop?
+    let contentHash: String?
+    /// ISO-8601 provenance value written by the server. Keeping this as a
+    /// string matches the web schema and avoids failing the entire article
+    /// decode when Firestore returns a licensed cover.
+    let retrievedAt: String?
+
+    init(
+        url: URL,
+        altText: String,
+        caption: String,
+        attribution: String,
+        license: String,
+        sourceUrl: URL?,
+        generated: Bool,
+        provider: String? = nil,
+        providerAssetId: String? = nil,
+        photographer: String? = nil,
+        licenseUrl: URL? = nil,
+        crop: CoverCrop? = nil,
+        contentHash: String? = nil,
+        retrievedAt: String? = nil
+    ) {
+        self.url = url
+        self.altText = altText
+        self.caption = caption
+        self.attribution = attribution
+        self.license = license
+        self.sourceUrl = sourceUrl
+        self.generated = generated
+        self.provider = provider
+        self.providerAssetId = providerAssetId
+        self.photographer = photographer
+        self.licenseUrl = licenseUrl
+        self.crop = crop
+        self.contentHash = contentHash
+        self.retrievedAt = retrievedAt
+    }
+}
+
+/// A normalized editorial crop. Published cover URLs already contain the
+/// chosen rendition; these values retain review provenance for compatible
+/// clients and future image renderers.
+struct CoverCrop: Codable, Hashable, Sendable {
+    let x: Double
+    let y: Double
+    let width: Double
+    let height: Double
 }
 
 struct ArticleGeneration: Codable, Hashable, Sendable {

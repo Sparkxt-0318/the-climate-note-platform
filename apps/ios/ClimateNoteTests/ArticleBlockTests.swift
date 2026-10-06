@@ -2,19 +2,6 @@ import XCTest
 @testable import ClimateNote
 
 final class ArticleBlockTests: XCTestCase {
-    func testCommunityImpactDecodesServerSnapshot() throws {
-        let data = Data(#"{"schemaVersion":1,"completedActions":12,"estimatedKgCO2e":1.6,"estimatedActions":2,"updatedAt":"2026-09-12T12:00:00.000Z"}"#.utf8)
-        let snapshot = try JSONDecoder().decode(CommunityImpact.self, from: data)
-        XCTAssertTrue(snapshot.isValid)
-        XCTAssertNotNil(snapshot.date)
-        XCTAssertEqual(snapshot.completedActions, 12)
-    }
-
-    func testCommunityImpactRejectsCorruptTotals() {
-        XCTAssertFalse(CommunityImpact(schemaVersion: 1, completedActions: 1, estimatedKgCO2e: 2, estimatedActions: 2, updatedAt: "2026-09-12T12:00:00Z").isValid)
-        XCTAssertFalse(CommunityImpact(schemaVersion: 2, completedActions: 0, estimatedKgCO2e: 0, estimatedActions: 0, updatedAt: "invalid").isValid)
-    }
-
     func testDecodesParagraphAndListWithoutChangingText() throws {
         let data = Data(#"[{"type":"paragraph","text":"Exact source sentence."},{"type":"bulletedList","items":["One","Two"]}]"#.utf8)
         let blocks = try JSONDecoder().decode([ArticleBlock].self, from: data)
@@ -33,5 +20,72 @@ final class ArticleBlockTests: XCTestCase {
             factorQuantity: 2
         )
         XCTAssertEqual(ImpactFactorCatalog.estimate(for: action)?.value, 0.8)
+    }
+
+    func testRefreshWaitsForServerAfterCachedSnapshot() {
+        var state = ArticleRefreshRequestState()
+        let request = state.begin()
+        XCTAssertNil(state.resolve(.cachedSnapshot, for: request))
+        XCTAssertEqual(state.resolve(.serverSnapshot, for: request), .success)
+    }
+
+    func testRefreshAllowsAnEmptyServerSnapshotToFinish() {
+        var state = ArticleRefreshRequestState()
+        let request = state.begin()
+        XCTAssertEqual(state.resolve(.serverSnapshot, for: request), .success)
+    }
+
+    func testRefreshPresentationKeepsInitialCachedEmptyLoadingAndRetainsVisibleContent() {
+        let initialCache = ArticleRefreshPresentationPolicy.snapshotDecision(
+            isFromCache: true, hadRetainedArticles: false, incomingIsEmpty: true
+        )
+        XCTAssertFalse(initialCache.stopsLoading)
+        XCTAssertEqual(ArticleRefreshPresentationPolicy.displayedArticles(
+            current: ["retained"], incoming: [], decision: ArticleRefreshPresentationPolicy.snapshotDecision(
+                isFromCache: true, hadRetainedArticles: true, incomingIsEmpty: true
+            )
+        ), ["retained"])
+    }
+
+    func testRefreshPresentationAppliesServerEmptyAndRetainsFailureOrTimeoutContent() {
+        let serverEmpty = ArticleRefreshPresentationPolicy.snapshotDecision(
+            isFromCache: false, hadRetainedArticles: true, incomingIsEmpty: true
+        )
+        XCTAssertTrue(serverEmpty.stopsLoading)
+        XCTAssertEqual(ArticleRefreshPresentationPolicy.displayedArticles(
+            current: ["retained"], incoming: [], decision: serverEmpty
+        ), [])
+        XCTAssertEqual(ArticleRefreshPresentationPolicy.articlesAfterTerminal(
+            resolution: .failure, current: ["retained"], server: []
+        ), ["retained"])
+        XCTAssertEqual(ArticleRefreshPresentationPolicy.articlesAfterTerminal(
+            resolution: .timedOut, current: ["retained"], server: []
+        ), ["retained"])
+    }
+
+    func testRefreshFailureAndTimeoutLeaveTheCallerToRetainExistingArticles() {
+        var state = ArticleRefreshRequestState()
+        let failureRequest = state.begin()
+        XCTAssertEqual(state.resolve(.failure, for: failureRequest), .failure)
+        XCTAssertNil(state.resolve(.timeout, for: failureRequest))
+
+        let timeoutRequest = state.begin()
+        XCTAssertEqual(state.resolve(.timeout, for: timeoutRequest), .timedOut)
+    }
+
+    func testRefreshIgnoresDuplicateServerSnapshots() {
+        var state = ArticleRefreshRequestState()
+        let request = state.begin()
+        XCTAssertEqual(state.resolve(.serverSnapshot, for: request), .success)
+        XCTAssertNil(state.resolve(.serverSnapshot, for: request))
+    }
+
+    func testRefreshCancellationAndObsoleteCallbacksCannotCompleteNewRequest() {
+        var state = ArticleRefreshRequestState()
+        let obsolete = state.begin()
+        let current = state.begin()
+        XCTAssertNil(state.resolve(.serverSnapshot, for: obsolete))
+        XCTAssertEqual(state.resolve(.cancelled, for: current), .cancelled)
+        XCTAssertNil(state.resolve(.serverSnapshot, for: current))
     }
 }

@@ -31,12 +31,20 @@
     <string>$(CURRENT_PROJECT_VERSION)</string>
     <key>ClimateNoteAPIBaseURL</key>
     <string>$(CLIMATE_NOTE_API_BASE_URL)</string>
+    <key>PixabayAPIKey</key>
+    <string>$(PIXABAY_API_KEY)</string>
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>
     <key>FirebaseMessagingAutoInitEnabled</key>
     <false/>
     <key>LSRequiresIPhoneOS</key>
     <true/>
+    <key>UIAppFonts</key>
+    <array>
+        <string>GeistVariable.ttf</string>
+        <string>GeistMonoVariable.ttf</string>
+        <string>NewsreaderVariable.ttf</string>
+    </array>
     <key>UIApplicationSceneManifest</key>
     <dict>
         <key>UIApplicationSupportsMultipleScenes</key>

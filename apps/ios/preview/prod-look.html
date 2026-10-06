@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Climate Note — iPhone mock</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --canvas: #F7F3EC;
+      --surface: #F1ECE2;
+      --elevated: #E8E1D4;
+      --ink: #1A1815;
+      --secondary: #46423B;
+      --tertiary: #6B6659;
+      --accent: #2F5D46;
+      --on-accent: #FFFFFF;
+      --divider: #AEA38D;
+      --pine: #12110E;
+      --pine-ink: #F2EEE4;
+      --cta: #12110E;
+      --on-cta: #F2EEE4;
+      --tab-idle: #C9C3B5;
+      --mint: #7FBF9C;
+      --mint-bright: #9BD4B7;
+      --font-ui: "Geist", system-ui, sans-serif;
+      --font-read: "Newsreader", Georgia, serif;
+      --font-mono: "Geist Mono", ui-monospace, monospace;
+      --space: 24px;
+      --space-sm: 8px;
+      --space-md: 16px;
+      --space-lg: 32px;
+      --r-s: 4px;
+      --r-m: 10px;
+      --r-l: 18px;
+      --stage: #0a0908;
+      --bar-line: rgba(242,238,228,.12);
+    }
+    [data-theme="dark"] {
+      --canvas: #161411;
+      --surface: #201D18;
+      --elevated: #2C2821;
+      --ink: #F2EEE4;
+      --secondary: #C4BEB0;
+      --tertiary: #988F82;
+      --accent: #8FC9A8;
+      --on-accent: #12130F;
+      --divider: #484038;
+      --cta: #F2EEE4;
+      --on-cta: #12110E;
+      --tab-idle: #C9C3B5;
+      --mint: #8FC9A8;
+      --mint-bright: #9BD4B7;
+      --stage: #050504;
+      --bar-line: rgba(242,238,228,.08);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      height: 100dvh;
+      overflow: hidden;
+      background: var(--stage);
+      color: #F2EEE4;
+      font-family: var(--font-ui);
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    .bar {
+      display: flex; flex-wrap: wrap; gap: 10px 16px;
+      align-items: center; justify-content: space-between;
+      padding: 10px 18px;
+      border-bottom: 1px solid var(--bar-line);
+      background: var(--pine);
+    }
+    .bar h1 {
+      font-family: var(--font-read);
+      font-size: 15px; font-weight: 500; letter-spacing: -0.2px;
+      color: var(--pine-ink);
+    }
+    .bar p { margin-top: 2px; font: 400 10px/1.35 var(--font-mono); color: #948D7E; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip {
+      appearance: none; border: 1px solid rgba(242,238,228,.18);
+      background: transparent; color: #C9C3B5;
+      font: 500 11px/1 var(--font-mono);
+      padding: 8px 11px; border-radius: 999px; cursor: pointer;
+    }
+    .chip[aria-pressed="true"] { background: var(--mint-bright); color: #12130F; border-color: var(--mint-bright); }
+
+    .stage {
+      display: flex; justify-content: center; align-items: center;
+      gap: 28px; padding: 12px 16px; min-height: 0; overflow: hidden;
+    }
+
+    .device-scale {
+      --phone-w: 393px;
+      --phone-h: 852px;
+      --fit: min(1, calc((100dvh - 88px) / 852px), calc((100dvw - 40px) / 393px));
+      width: calc(var(--phone-w) * var(--fit));
+      height: calc(var(--phone-h) * var(--fit));
+      position: relative; overflow: hidden; flex: 0 0 auto;
+    }
+    .device {
+      width: var(--phone-w); height: var(--phone-h);
+      border-radius: 54px; background: #1c1b19; padding: 11px;
+      box-shadow: 0 0 0 1px #3a3732, 0 0 0 3px #11100e, 0 24px 60px rgba(0,0,0,.55);
+      position: absolute; top: 0; left: 0;
+      transform: scale(var(--fit)); transform-origin: top left;
+    }
+    .island {
+      position: absolute; top: 11px; left: 50%; transform: translateX(-50%);
+      width: 126px; height: 37px; border-radius: 20px; background: #000; z-index: 7;
+    }
+    .screen {
+      width: 100%; height: 100%; border-radius: 44px; overflow: hidden;
+      background: var(--canvas); color: var(--ink);
+      display: grid; grid-template-rows: 98px 1fr 83px; position: relative;
+    }
+    .screen.no-tabs { grid-template-rows: 98px 1fr; }
+
+    .status {
+      position: absolute; top: 14px; left: 28px; right: 28px; z-index: 6;
+      display: flex; justify-content: space-between; align-items: center;
+      font: 600 15px/1 var(--font-ui); color: var(--pine-ink); pointer-events: none;
+    }
+
+    .nav {
+      background: var(--pine);
+      display: grid;
+      grid-template-columns: 72px 1fr 72px;
+      align-items: end;
+      padding: 54px 8px 8px;
+      position: relative; z-index: 2;
+    }
+    .nav .side {
+      height: 36px; display: grid; place-items: center;
+      color: var(--pine-ink); font: 600 14px/1 var(--font-ui);
+    }
+    .nav .side.share { font-size: 17px; }
+    .wordmark {
+      justify-self: center;
+      display: inline-flex; align-items: center;
+      height: 36px; color: var(--pine-ink);
+      white-space: nowrap;
+      font-family: var(--font-read);
+      font-size: 17px; font-weight: 500; letter-spacing: -0.2px;
+    }
+
+    .panel { overflow: auto; background: var(--canvas); }
+    .content {
+      padding: 24px 24px 48px;
+      display: flex;
+      flex-direction: column;
+      gap: 48px;
+    }
+
+    .page-title { font: 600 28px/1.08 var(--font-read); letter-spacing: -.5px; color: var(--ink); }
+    .page-title.serif { font-family: var(--font-read); font-weight: 600; }
+    .page-sub { margin-top: 12px; font: 400 17px/1.45 var(--font-ui); color: var(--secondary); max-width: 34ch; }
+    .section-title { font: 600 20px/1.2 var(--font-ui); letter-spacing: -.35px; color: var(--ink); }
+    .quiet-label {
+      font: 600 12px/1.2 var(--font-ui); letter-spacing: .4px; text-transform: uppercase;
+      color: var(--secondary);
+    }
+    .guest-mark { font: 600 18px/1.25 var(--font-read); color: var(--ink); }
+    .row-title { font: 600 18px/1.3 var(--font-ui); color: var(--ink); }
+    .body-ui { font: 400 17px/1.4 var(--font-ui); color: var(--secondary); }
+    .meta { font: 400 13px/1.35 var(--font-ui); color: var(--tertiary); }
+    .eyebrow { font: 500 12px/1.35 var(--font-mono); letter-spacing: .4px; color: var(--accent); }
+    .cue { font: 600 15px/1 var(--font-ui); color: var(--accent); }
+    .story-title {
+      font-family: var(--font-ui);
+      font-size: 26px; font-weight: 600; line-height: 1.12;
+      letter-spacing: -.5px; color: var(--ink);
+    }
+    .story-deck {
+      font-family: var(--font-read);
+      font-size: 20px; font-weight: 400; line-height: 1.4;
+      color: var(--secondary);
+    }
+    .article-title { font: 600 32px/1.08 var(--font-read); letter-spacing: -.4px; color: var(--ink); }
+    .reading-deck { font: 400 20px/1.35 var(--font-read); color: var(--secondary); }
+    .reading p { font: 400 18px/1.5 var(--font-read); color: var(--ink); margin-bottom: 14px; }
+    .reading h3 { font: 700 24px/1.15 var(--font-ui); letter-spacing: -.2px; margin: 14px 0 10px; }
+    .hairline { height: 1px; background: var(--divider); border: 0; }
+    .new-mark { font: 600 13px/1.2 var(--font-ui); color: var(--accent); }
+    .byline-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    }
+    .byline {
+      font: 400 15px/1.35 var(--font-read); color: var(--secondary);
+    }
+    .byline strong { font-weight: 600; color: var(--ink); }
+    .share-pill {
+      appearance: none; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 6px;
+      height: 34px; padding: 0 12px;
+      border-radius: 999px;
+      border: 1.25px solid color-mix(in srgb, var(--ink) 38%, transparent);
+      background: var(--elevated);
+      color: var(--ink);
+      font: 500 14px/1 var(--font-read);
+      white-space: nowrap; flex: 0 0 auto;
+    }
+    .share-pill svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 1.6; }
+
+    .tip {
+      display: flex; align-items: baseline; gap: 12px;
+      font: 400 15px/1.4 var(--font-ui); color: var(--secondary);
+    }
+    .tip button {
+      appearance: none; border: 0; background: none; cursor: pointer;
+      font: 600 13px/1 var(--font-ui); color: var(--accent); flex: 0 0 auto;
+    }
+
+    .sig {
+      width: 100%; height: 220px; border-radius: 14px;
+      position: relative; overflow: hidden; color: #fff;
+      display: flex; align-items: flex-end;
+      background-size: cover; background-position: center;
+    }
+    .sig.sm { width: 72px; height: 56px; flex: 0 0 auto; align-items: center; justify-content: center; border-radius: 12px; }
+    .sig.story { height: 220px; }
+    .sig::after {
+      content: ""; position: absolute; inset: 0;
+      background: linear-gradient(180deg, transparent 42%, rgba(10,12,14,.55) 100%);
+      pointer-events: none;
+    }
+    .sig.sm::after { background: rgba(10,12,14,.18); }
+    .sig-water { background-image: url("covers/pharma.jpg"); background-color: #1A3847; }
+    .sig-materials { background-image: url("covers/lignin.jpg"); background-color: #3D2B1C; }
+    .sig-energy { background-image: url("covers/energy.jpg"); background-color: #5A3A12; }
+    .sig-wildlife { background-image: url("covers/bees.jpg"); background-color: #6B4A12; }
+    .sig-coral { background-image: url("covers/coral.jpg"); background-color: #6B3040; }
+    .sig-reef { background-image: url("covers/reef.jpg"); background-color: #1A4860; }
+    .sig .glow { display: none; }
+    .sig .label {
+      position: relative; z-index: 1;
+      padding: 16px; display: flex; flex-direction: column; gap: 6px;
+    }
+    .sig .label .topic { font: 500 11px/1 var(--font-ui); opacity: .88; }
+    .sig .label .title { display: none; }
+    .sig.photo .label { display: none; }
+    .sig.sm .label { display: none; }
+    .sig.sm::before { content: none; }
+
+    .group-card {
+      background: var(--elevated);
+      border-radius: var(--r-m);
+      padding: 4px 16px;
+    }
+    .group-card.pad { padding: 16px; }
+    .week-card {
+      background: var(--elevated);
+      border-radius: var(--r-m);
+      padding: 16px;
+      display: flex; flex-direction: column; gap: 16px;
+    }
+    .jump-quiet {
+      display: flex; gap: 24px; flex-wrap: wrap;
+      font: 600 15px/1 var(--font-ui); color: var(--accent);
+    }
+    .jump-quiet button {
+      appearance: none; border: 0; background: none; color: inherit;
+      font: inherit; cursor: pointer; min-height: 44px; padding: 0;
+    }
+    .reflect-field {
+      min-height: 96px; padding: 16px;
+      border-radius: var(--r-m);
+      background: var(--elevated);
+      border: 1px solid color-mix(in srgb, var(--ink) 12%, transparent);
+      display: flex; flex-direction: column; gap: 6px; justify-content: flex-start;
+    }
+    .reflect-field strong { font: 600 15px/1.2 var(--font-ui); color: var(--ink); }
+    .reflect-field span { font: 400 15px/1.35 var(--font-ui); color: var(--tertiary); }
+
+    .lead { display: flex; flex-direction: column; gap: 20px; }
+    .topic-badge {
+      display: inline-flex; align-items: center;
+      font: 600 12px/1 var(--font-ui);
+      padding: 5px 10px; border-radius: 999px;
+      width: fit-content;
+      color: var(--accent);
+      background: color-mix(in srgb, var(--accent) 12%, transparent);
+    }
+    .meta-row {
+      display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap;
+      margin-top: 4px;
+    }
+    .cue { font: 600 15px/1 var(--font-ui); color: var(--accent); }
+
+    .topics { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+    .topics::-webkit-scrollbar { display: none; }
+    .topic {
+      appearance: none; border: 1px solid color-mix(in srgb, var(--ink) 22%, transparent); cursor: pointer;
+      font: 600 13px/1 var(--font-ui);
+      padding: 0 16px; height: 34px;
+      border-radius: 999px;
+      background: var(--elevated); color: var(--ink);
+      white-space: nowrap;
+    }
+    .topic[aria-pressed="true"] {
+      background: var(--accent); color: var(--on-accent);
+      border-color: transparent;
+    }
+
+    .archive {
+      display: flex; align-items: center; gap: 16px;
+      padding: 24px 0; border-top: 1px solid color-mix(in srgb, var(--divider) 45%, transparent);
+    }
+    .archive:first-of-type { border-top: 0; padding-top: 8px; }
+    .archive .chev { margin-left: auto; color: var(--tertiary); font: 600 12px/1 var(--font-ui); }
+
+    .jump { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+    .btn-capsule {
+      appearance: none; border: 0; background: var(--cta); color: var(--on-cta);
+      font: 500 17px/1 var(--font-read); padding: 0 24px; height: 52px;
+      border-radius: 999px; cursor: pointer; width: 100%;
+    }
+    .btn-text {
+      appearance: none; border: 0; background: none; color: var(--accent);
+      font: 600 15px/1.2 var(--font-ui); min-height: 44px; padding: 0; cursor: pointer; text-align: left;
+    }
+    .btn-primary {
+      appearance: none; border: 0; width: 100%; height: 52px;
+      background: var(--cta); color: var(--on-cta);
+      font: 500 17px/1 var(--font-read); border-radius: 999px; cursor: pointer;
+    }
+    .btn-secondary {
+      appearance: none; width: 100%; min-height: 44px;
+      border: 1.5px solid color-mix(in srgb, var(--ink) 28%, transparent); border-radius: 999px;
+      background: var(--elevated); color: var(--ink);
+      font: 500 16px/1 var(--font-read); cursor: pointer; padding: 10px 16px;
+    }
+
+    .seg {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      background: var(--elevated); border-radius: 9px; padding: 2px; gap: 2px;
+    }
+    .seg button {
+      appearance: none; border: 0; background: transparent; color: var(--secondary);
+      font: 600 12px/1.2 var(--font-ui); height: 32px; border-radius: 7px; cursor: pointer;
+    }
+    .seg button[aria-pressed="true"] {
+      background: var(--canvas); color: var(--ink);
+      box-shadow: 0 1px 2px rgba(0,0,0,.08);
+    }
+    .field {
+      width: 100%; min-height: 110px; border: 2px solid var(--accent);
+      border-radius: var(--r-m); background: var(--surface); color: var(--ink);
+      font: 400 16px/1.4 var(--font-ui); padding: 14px; resize: none;
+    }
+    .caption { font: 400 12px/1.3 var(--font-ui); color: var(--secondary); }
+
+    .summary-title { font: 600 28px/1.15 var(--font-read); color: var(--ink); }
+    .sum-item { display: flex; gap: 14px; }
+    .sum-item .n { font: 400 11px/1.2 var(--font-mono); color: var(--accent); width: 28px; }
+    .sum-item strong { display: block; font: 600 16px/1.25 var(--font-ui); margin-bottom: 4px; }
+    .sum-item p { font: 400 18px/1.45 var(--font-read); color: var(--secondary); }
+
+    .week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-top: 4px; }
+    .day {
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      font: 500 11px/1 var(--font-ui); color: var(--tertiary);
+      padding: 10px 2px;
+    }
+    .day .wd { font: 500 11px/1 var(--font-ui); }
+    .day .num { font: 600 14px/1 var(--font-ui); color: inherit; }
+    .day .ring {
+      width: 18px; height: 18px; border-radius: 50%;
+      border: 1.25px solid var(--divider); margin-top: 2px;
+    }
+    .day.today { color: var(--ink); }
+    .day.today .ring { border-color: color-mix(in srgb, var(--ink) 35%, transparent); }
+    .day.done {
+      background: var(--cta); color: var(--on-cta);
+      border-radius: 12px; padding: 10px 2px 12px;
+    }
+    .day.done .num { color: var(--on-cta); }
+    .day.done .check {
+      width: 14px; height: 14px; margin-top: 4px;
+      display: grid; place-items: center;
+      font-size: 10px; font-weight: 700;
+    }
+
+    .state { font: 400 15px/1.2 var(--font-ui); color: var(--accent); }
+    .state.quiet { font: 600 13px/1.2 var(--font-ui); color: var(--secondary); }
+    .detail { font: 400 17px/1.5 var(--font-ui); color: var(--secondary); }
+    .entry-title { font: 600 22px/1.25 var(--font-read); color: var(--ink); margin: 0; }
+    .stack { display: flex; flex-direction: column; gap: 12px; margin-top: 8px; }
+    .note-card {
+      background: var(--surface);
+      border: 1px solid color-mix(in srgb, var(--divider) 55%, transparent);
+      border-radius: var(--r-m);
+      padding: 16px;
+    }
+    .entry-card { display: flex; flex-direction: column; gap: 10px; }
+
+    .metrics {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 4px;
+    }
+    .metric {
+      background: var(--elevated); border-radius: var(--r-m); padding: 12px;
+      min-height: 68px; border: 1px solid color-mix(in srgb, var(--divider) 45%, transparent);
+    }
+    .metric .v { font: 600 16px/1.1 var(--font-ui); font-variant-numeric: tabular-nums; color: var(--ink); }
+    .metric .l { margin-top: 4px; font: 400 11px/1.25 var(--font-ui); color: var(--secondary); }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid color-mix(in srgb, var(--divider) 65%, transparent);
+      border-radius: var(--r-l);
+      padding: 24px;
+      display: flex; flex-direction: column; gap: 16px;
+    }
+    .card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+    .card-title { font: 600 20px/1.2 var(--font-ui); letter-spacing: -.35px; color: var(--ink); }
+    .inner-card {
+      background: var(--elevated);
+      border: 1px solid color-mix(in srgb, var(--divider) 45%, transparent);
+      border-radius: var(--r-m);
+      padding: 16px;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .pill {
+      font: 600 13px/1 var(--font-ui); color: var(--accent);
+      background: var(--elevated); border-radius: 999px;
+      padding: 6px 10px;
+    }
+
+    .settings-h { font: 600 16px/1.2 var(--font-ui); margin-bottom: 10px; }
+    .settings-row {
+      display: flex; align-items: center; gap: 12px;
+      min-height: 52px; padding: 12px 0;
+      border-top: 1px solid color-mix(in srgb, var(--divider) 45%, transparent);
+      font: 400 17px/1.3 var(--font-ui); color: var(--ink);
+    }
+    .settings-row:first-child { border-top: 0; }
+    .settings-row .trail { margin-left: auto; color: var(--tertiary); font-size: 12px; }
+    .toggle {
+      margin-left: auto; width: 51px; height: 31px; border-radius: 999px;
+      background: color-mix(in srgb, var(--ink) 22%, var(--elevated));
+      border: 1px solid color-mix(in srgb, var(--ink) 18%, transparent);
+      position: relative; flex: 0 0 auto;
+    }
+    .toggle::after {
+      content: ""; position: absolute; top: 2px; left: 2px;
+      width: 27px; height: 27px; border-radius: 50%; background: #fff;
+      box-shadow: 0 1px 2px rgba(0,0,0,.18);
+    }
+    [data-theme="dark"] .toggle::after {
+      background: var(--pine-ink);
+      box-shadow: 0 1px 2px rgba(0,0,0,.45);
+    }
+    .pad { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+
+    .signin-panel {
+      margin-top: 20px; padding: 20px; border-radius: var(--r-l);
+      background: var(--surface); border: 1px solid var(--divider);
+      display: flex; flex-direction: column; gap: 18px;
+    }
+    .brand {
+      font-family: var(--font-read);
+      font-size: 28px; font-weight: 500; letter-spacing: -0.3px;
+      color: var(--ink);
+    }
+    .provider {
+      width: 100%; height: 50px; border-radius: var(--r-m); border: 0;
+      font: 500 15px/1 var(--font-ui); cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .provider.apple { background: var(--cta); color: var(--on-cta); }
+    .provider.google {
+      background: var(--elevated); color: var(--ink);
+      border: 1px solid color-mix(in srgb, var(--divider) 80%, transparent);
+    }
+    .age {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      font: 400 14px/1.3 var(--font-ui); color: var(--ink);
+    }
+
+    .tabbar {
+      background: var(--pine);
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      align-items: flex-start; padding: 8px 6px 22px;
+      border-top: 1px solid rgba(255,255,255,.08); position: relative;
+    }
+    .home-ind {
+      position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%);
+      width: 134px; height: 5px; border-radius: 999px; background: rgba(255,255,255,.35);
+    }
+    .tab {
+      appearance: none; background: none; border: 0; color: var(--tab-idle);
+      font: 500 10px/1.15 var(--font-ui);
+      display: flex; flex-direction: column; align-items: center; gap: 3px;
+      padding: 4px; cursor: pointer;
+    }
+    .tab svg { width: 25px; height: 25px; stroke: currentColor; fill: none; stroke-width: 1.6; }
+    .tab[aria-current="page"] { color: var(--mint-bright); }
+    .hidden { display: none !important; }
+
+    .aside {
+      max-width: 240px; font: 400 11px/1.5 var(--font-mono); color: #948D7E; align-self: center;
+    }
+    .aside strong { color: #C9C3B5; font-weight: 500; display: block; margin-bottom: 8px; }
+    @media (max-width: 900px), (max-height: 820px) {
+      .aside { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <div>
+      <h1>The Climate Note</h1>
+      <p>Editorial wordmark · pine masthead · serif reading</p>
+    </div>
+    <div class="chips" role="tablist">
+      <button class="chip" data-scene="feed" aria-pressed="true">Read</button>
+      <button class="chip" data-scene="story" aria-pressed="false">Story</button>
+      <button class="chip" data-scene="journal" aria-pressed="false">My Note</button>
+      <button class="chip" data-scene="account" aria-pressed="false">Account</button>
+      <button class="chip" data-scene="signin" aria-pressed="false">Sign in</button>
+      <button class="chip" id="themeToggle" aria-pressed="false">Dark</button>
+    </div>
+  </header>
+
+  <main class="stage">
+    <div class="device-scale">
+      <div class="device" aria-label="iPhone mock">
+        <div class="island" aria-hidden="true"></div>
+        <div class="screen" id="phone">
+          <div class="status"><span>9:41</span><span>●●● ▌▌</span></div>
+
+          <div class="nav" id="nav">
+            <div class="side" id="navLeading"></div>
+            <div class="wordmark">The Climate Note</div>
+            <div class="side hidden" id="navTrailing" aria-hidden="true"></div>
+          </div>
+
+          <!-- READ -->
+          <div class="panel" data-panel="feed">
+            <div class="content">
+              <header>
+                <h2 class="page-title">Read</h2>
+                <p class="page-sub">One story. Something you can do.</p>
+              </header>
+
+              <article class="lead">
+                <div class="sig sig-water photo" aria-hidden="true"></div>
+                <div>
+                  <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+                    <span class="topic-badge">Water</span>
+                    <span class="new-mark">New</span>
+                  </div>
+                  <h3 class="story-title">Pharmaceutical pollution</h3>
+                  <p class="story-deck" style="margin-top:14px">Medicine protects our health—but traces that reach rivers can affect wildlife and water systems.</p>
+                  <div class="meta-row" style="margin-top:18px">
+                    <span class="meta">Sep 6, 2026 · 5 min read</span>
+                    <span class="cue">Read the note →</span>
+                  </div>
+                </div>
+              </article>
+
+              <section style="display:flex;flex-direction:column;gap:20px">
+                <h3 class="section-title">Earlier notes</h3>
+                <div class="topics" aria-label="Filter earlier notes by topic">
+                  <button class="topic" type="button" aria-pressed="true">All</button>
+                  <button class="topic" type="button" aria-pressed="false">Materials</button>
+                  <button class="topic" type="button" aria-pressed="false">Energy</button>
+                  <button class="topic" type="button" aria-pressed="false">Wildlife</button>
+                </div>
+                <div>
+                  <div class="archive">
+                    <div class="sig sig-materials sm" aria-hidden="true"></div>
+                    <div>
+                      <div class="meta" style="color:var(--accent);font-weight:600;margin-bottom:4px">Materials</div>
+                      <div class="row-title">Lignin-based materials in tires and coatings</div>
+                      <div class="meta" style="margin-top:6px">Aug 30, 2026 · 4 min read</div>
+                    </div>
+                    <span class="chev">›</span>
+                  </div>
+                  <div class="archive">
+                    <div class="sig sig-energy sm" aria-hidden="true"></div>
+                    <div>
+                      <div class="meta" style="color:var(--accent);font-weight:600;margin-bottom:4px">Energy</div>
+                      <div class="row-title">Cities: the savior of energy</div>
+                      <div class="meta" style="margin-top:6px">Aug 23, 2026 · 6 min read</div>
+                    </div>
+                    <span class="chev">›</span>
+                  </div>
+                  <div class="archive">
+                    <div class="sig sig-wildlife sm" aria-hidden="true"></div>
+                    <div>
+                      <div class="meta" style="color:var(--accent);font-weight:600;margin-bottom:4px">Wildlife</div>
+                      <div class="row-title">The disappearance of bees</div>
+                      <div class="meta" style="margin-top:6px">Aug 16, 2026 · 5 min read</div>
+                    </div>
+                    <span class="chev">›</span>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </div>
+
+          <!-- STORY -->
+          <div class="panel hidden" data-panel="story">
+            <div class="content">
+              <header style="display:flex;flex-direction:column;gap:20px">
+                <span class="topic-badge">Water</span>
+                <h2 class="article-title">Pharmaceutical pollution</h2>
+                <p class="reading-deck">Medicine protects our health—but traces that reach rivers can affect wildlife and water systems.</p>
+                <div class="byline-row">
+                  <div class="byline">By <strong>The Climate Note</strong> · Sep 6 · 5 min read</div>
+                  <button class="share-pill" type="button" aria-label="Share">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"/><path d="M8 7l4-4 4 4"/><path d="M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg>
+                    Share
+                  </button>
+                </div>
+              </header>
+
+              <div class="sig sig-water photo story" aria-hidden="true"></div>
+              <p class="meta" style="margin:-8px 0 0;color:var(--tertiary)">Story cover · Water</p>
+
+              <div class="reading">
+                <p>Many people rely on medicine every day. After medication is used—or when unused medicine is discarded—some of its ingredients can enter wastewater and the wider environment.</p>
+              </div>
+
+              <div class="jump-quiet">
+                <button type="button">Skip to action</button>
+                <button type="button">Jump to summary</button>
+              </div>
+
+              <div class="reading">
+                <p>Treatment systems remove many pollutants, but they were not built to catch every pharmaceutical compound.</p>
+                <h3>Small traces, real effects</h3>
+                <p>The amount may be small, yet long-term exposure can still affect aquatic life.</p>
+              </div>
+
+              <section style="display:flex;flex-direction:column;gap:20px;padding-top:4px">
+                <hr class="hairline" />
+                <div class="eyebrow">The short version</div>
+                <h3 class="summary-title">The story in three parts</h3>
+                <div class="sum-item"><span class="n">01</span><div><strong>What’s happening</strong><p>Medicines can leave small traces in rivers and other waterways.</p></div></div>
+                <div class="sum-item"><span class="n">02</span><div><strong>Why it matters</strong><p>Even tiny amounts can affect wildlife over time.</p></div></div>
+                <div class="sum-item"><span class="n">03</span><div><strong>What we can do</strong><p>Use an official medicine take-back location.</p></div></div>
+              </section>
+
+              <div class="jump">
+                <button class="btn-capsule" type="button">Choose an action</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- MY NOTE -->
+          <div class="panel hidden" data-panel="journal">
+            <div class="content">
+              <header>
+                <h2 class="page-title serif">My Note</h2>
+                <p class="page-sub">Small actions add up. Capture what you’re doing and how it feels.</p>
+              </header>
+
+              <section class="week-card">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px">
+                  <h3 class="section-title">This week</h3>
+                  <span class="meta">Sep 6 — 12</span>
+                </div>
+                <div class="week">
+                  <div class="day"><span class="wd">Sun</span><span class="num">6</span><span class="ring" aria-hidden="true"></span></div>
+                  <div class="day"><span class="wd">Mon</span><span class="num">7</span><span class="ring" aria-hidden="true"></span></div>
+                  <div class="day done"><span class="wd">Tue</span><span class="num">8</span><span class="check" aria-hidden="true">✓</span></div>
+                  <div class="day today"><span class="wd">Wed</span><span class="num">9</span><span class="ring" aria-hidden="true"></span></div>
+                  <div class="day"><span class="wd">Thu</span><span class="num">10</span><span class="ring" aria-hidden="true"></span></div>
+                  <div class="day"><span class="wd">Fri</span><span class="num">11</span><span class="ring" aria-hidden="true"></span></div>
+                  <div class="day"><span class="wd">Sat</span><span class="num">12</span><span class="ring" aria-hidden="true"></span></div>
+                </div>
+              </section>
+
+              <section style="display:flex;flex-direction:column;gap:18px">
+                <h3 class="quiet-label">Planned action</h3>
+                <h4 class="entry-title">Return unused medicine safely</h4>
+                <p class="detail">Bring one unused medication to a pharmacy or community take-back this week.</p>
+                <button class="btn-text" type="button" style="font-size:13px;min-height:36px;padding:0">From Pharmaceutical pollution ↗</button>
+                <div class="stack">
+                  <button class="btn-primary" type="button">Mark complete</button>
+                  <button class="btn-secondary" type="button">Remind me</button>
+                </div>
+              </section>
+
+              <section style="display:flex;flex-direction:column;gap:14px">
+                <h3 class="quiet-label">Reflection</h3>
+                <div class="reflect-field">
+                  <strong>Write a reflection</strong>
+                  <span>What stayed with you from this note?</span>
+                </div>
+              </section>
+
+              <section class="week-card">
+                <h3 class="quiet-label">Your impact</h3>
+                <div style="display:grid;grid-template-columns:1fr 1px 1fr 1px 1fr;gap:0;align-items:center">
+                  <div><div class="section-title">1</div><div class="caption">action</div></div>
+                  <div style="background:color-mix(in srgb, var(--divider) 55%, transparent);height:36px"></div>
+                  <div style="padding-left:12px"><div class="section-title">3.2</div><div class="caption">kg CO₂e</div></div>
+                  <div style="background:color-mix(in srgb, var(--divider) 55%, transparent);height:36px"></div>
+                  <div style="padding-left:12px"><div class="section-title">1.4</div><div class="caption">kg waste</div></div>
+                </div>
+              </section>
+
+              <div class="settings-row" style="padding-left:0;padding-right:0">Community impact <span class="trail">›</span></div>
+            </div>
+          </div>
+
+          <!-- ACCOUNT (guest) -->
+          <div class="panel hidden" data-panel="account">
+            <div class="content">
+              <header>
+                <h2 class="page-title serif">Account</h2>
+                <p class="guest-mark" style="margin-top:12px">Guest</p>
+                <p class="page-sub">Notes stay on this device for now. Link Apple or Google to keep them across devices.</p>
+              </header>
+
+              <button class="btn-primary" type="button">Keep notes with Apple or Google</button>
+
+              <section style="display:flex;flex-direction:column;gap:12px">
+                <h3 class="quiet-label">Your data</h3>
+                <div class="group-card">
+                  <div class="settings-row">Export my private data</div>
+                  <div class="settings-row">End guest session</div>
+                </div>
+              </section>
+
+              <section style="display:flex;flex-direction:column;gap:14px">
+                <h3 class="quiet-label">Notifications</h3>
+                <div class="group-card pad" style="display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:52px;font:400 17px/1.3 var(--font-ui);color:var(--ink)">
+                  Weekly new article <span class="toggle" aria-hidden="true"></span>
+                </div>
+              </section>
+
+              <section style="display:flex;flex-direction:column;gap:12px">
+                <h3 class="quiet-label">Help</h3>
+                <div class="group-card">
+                  <div class="settings-row">Email support <span class="trail">›</span></div>
+                  <div class="settings-row">Privacy policy <span class="trail">›</span></div>
+                  <div class="settings-row">Terms <span class="trail">›</span></div>
+                </div>
+              </section>
+
+              <p class="caption" style="color:var(--tertiary)">For readers 13+. AI summaries are labeled. Impact figures are estimates.</p>
+            </div>
+          </div>
+
+          <!-- SIGN IN -->
+          <div class="panel hidden" data-panel="signin">
+            <div class="content">
+              <div class="signin-panel">
+                <div>
+                  <div class="eyebrow">Your private note</div>
+                  <h2 class="page-title" style="font-family:var(--font-read);font-weight:600;margin-top:6px;font-size:28px">Keep your own note.</h2>
+                  <p class="page-sub">Reading never requires an account. Create a guest account to save privately, or use Apple or Google.</p>
+                </div>
+                <hr class="hairline" />
+                <label class="age">
+                  <span>I confirm I am 13 or older.</span>
+                  <span class="toggle" aria-hidden="true"></span>
+                </label>
+                <p class="caption" style="margin-top:-8px">Confirm your age to continue.</p>
+                <button class="btn-secondary" type="button" style="opacity:.45">Continue as guest</button>
+                <div style="display:flex;flex-direction:column;gap:10px;opacity:.45">
+                  <button class="provider apple" type="button">Continue with Apple</button>
+                  <button class="provider google" type="button">Continue with Google</button>
+                </div>
+                <p class="caption">By continuing you agree to the Terms of Service and Privacy Policy.</p>
+              </div>
+            </div>
+          </div>
+
+          <nav class="tabbar" id="tabbar">
+            <button class="tab" data-tab="feed" aria-current="page">
+              <svg viewBox="0 0 24 24"><path d="M6 4h9a2 2 0 0 1 2 2v14H8a2 2 0 0 0-2 2"/><path d="M6 4a2 2 0 0 0-2 2v14"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+              Read
+            </button>
+            <button class="tab" data-tab="journal">
+              <svg viewBox="0 0 24 24"><path d="M7 4h11a1 1 0 0 1 1 1v15H8a2 2 0 0 0-2 2V6a2 2 0 0 1 2-2z"/><path d="M5 6a2 2 0 0 0-2 2v13"/><path d="M10 9h6M10 13h5"/></svg>
+              My Note
+            </button>
+            <button class="tab" data-tab="account">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="3.5"/><path d="M5 19c1.6-3 4-4.5 7-4.5s5.4 1.5 7 4.5"/></svg>
+              Account
+            </button>
+            <div class="home-ind" aria-hidden="true"></div>
+          </nav>
+        </div>
+      </div>
+    </div>
+
+    <aside class="aside">
+      <strong>Dark mode</strong>
+      Cream CTAs on lifted canvas · clearer surfaces · week capsules & buttons stay visible
+    </aside>
+  </main>
+
+  <script>
+    const root = document.documentElement;
+    const phone = document.getElementById("phone");
+    const tabbar = document.getElementById("tabbar");
+    const navTrailing = document.getElementById("navTrailing");
+    const navLeading = document.getElementById("navLeading");
+    const chips = [...document.querySelectorAll(".chip[data-scene]")];
+    const tabs = [...document.querySelectorAll(".tab")];
+    const panels = [...document.querySelectorAll("[data-panel]")];
+    const themeToggle = document.getElementById("themeToggle");
+
+    function setScene(scene) {
+      panels.forEach((p) => p.classList.toggle("hidden", p.dataset.panel !== scene));
+      chips.forEach((c) => c.setAttribute("aria-pressed", String(c.dataset.scene === scene)));
+      const showTabs = ["feed", "journal", "account", "story"].includes(scene);
+      tabbar.classList.toggle("hidden", !showTabs);
+      phone.classList.toggle("no-tabs", !showTabs);
+      navTrailing.classList.toggle("hidden", true);
+      navLeading.textContent = scene === "signin" ? "Not now" : "";
+      tabs.forEach((t) => {
+        const current = (scene === "story" && t.dataset.tab === "feed") || t.dataset.tab === scene;
+        t.setAttribute("aria-current", current ? "page" : "false");
+      });
+    }
+
+    chips.forEach((c) => c.addEventListener("click", () => setScene(c.dataset.scene)));
+    tabs.forEach((t) => t.addEventListener("click", () => setScene(t.dataset.tab)));
+    themeToggle.addEventListener("click", () => {
+      const next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+      root.setAttribute("data-theme", next);
+      themeToggle.setAttribute("aria-pressed", String(next === "dark"));
+      themeToggle.textContent = next === "dark" ? "Light" : "Dark";
+    });
+    document.querySelectorAll(".topics").forEach((row) => {
+      row.querySelectorAll(".topic").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          row.querySelectorAll(".topic").forEach((b) => b.setAttribute("aria-pressed", "false"));
+          btn.setAttribute("aria-pressed", "true");
+        });
+      });
+    });
+
+    setScene("feed");
+
+    function fitPhone() {
+      const scaleEl = document.querySelector(".device-scale");
+      const bar = document.querySelector(".bar");
+      const barH = bar ? bar.getBoundingClientRect().height : 64;
+      const asideHidden = getComputedStyle(document.querySelector(".aside") || document.body).display === "none";
+      const fit = Math.min(1, (window.innerHeight - barH - 24) / 852, (window.innerWidth - (asideHidden ? 24 : 280)) / 393);
+      scaleEl.style.setProperty("--fit", String(Math.max(0.35, fit)));
+    }
+    fitPhone();
+    window.addEventListener("resize", fitPhone);
+  </script>
+</body>
+</html>

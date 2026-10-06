@@ -1,217 +1,365 @@
 #if DEBUG
+import Foundation
 import SwiftUI
 
 enum ScreenshotConfiguration {
+    static let fixtureLocale = Locale(identifier: "en_US_POSIX")
+    static let fixtureTimeZone = TimeZone(secondsFromGMT: 0)!
+    static let fixtureCalendar: Calendar = {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.locale = fixtureLocale
+        calendar.timeZone = fixtureTimeZone
+        calendar.firstWeekday = 1
+        return calendar
+    }()
+
     static var scene: String? {
-        guard let index = ProcessInfo.processInfo.arguments.firstIndex(of: "--climate-screenshot") else {
-            return nil
-        }
-        let valueIndex = ProcessInfo.processInfo.arguments.index(after: index)
-        guard valueIndex < ProcessInfo.processInfo.arguments.endIndex else { return nil }
-        return ProcessInfo.processInfo.arguments[valueIndex]
+        let args = ProcessInfo.processInfo.arguments
+        guard let index = args.firstIndex(of: "--climate-screenshot"), index + 1 < args.count else { return nil }
+        return args[index + 1]
+    }
+
+    static var isIsolated: Bool {
+        scene != nil || ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
     }
 }
 
+/// Native QA uses production content components. Fixtures are never inserted into live stores.
+/// Interaction is disabled so a screenshot session cannot invoke authentication or mutate data.
 struct ScreenshotRootView: View {
     let scene: String
 
     var body: some View {
+        Group {
+            switch scene {
+            case "story":
+                ScreenshotTabs(selectedTab: 0) { PushedStoryCapture(article: ScreenshotFixtures.article) }
+            case "story-visual":
+                ScreenshotTabs(selectedTab: 0) { PushedStoryVisualCapture(article: ScreenshotFixtures.article) }
+            case "story-no-generation":
+                ScreenshotTabs(selectedTab: 0) { PushedStoryCapture(article: ScreenshotFixtures.earlierArticle) }
+            case "summary":
+                ScreenshotPage(width: ClimateTheme.ContentWidth.reading) { SummaryView(summary: ScreenshotFixtures.summary) }
+            case "actions", "action-selected", "reflection", "reflection-keyboard", "save-queued", "save-error", "save-synced":
+                ScreenshotPage(width: ClimateTheme.ContentWidth.reading) {
+                    ClimateActionPicker(
+                        article: ScreenshotFixtures.article,
+                        actions: ScreenshotFixtures.actions,
+                        initialSelection: scene == "action-selected" ? ScreenshotFixtures.actions.first : nil,
+                        initialCustomText: ["reflection", "reflection-keyboard", "save-queued", "save-error", "save-synced"].contains(scene)
+                            ? "I’ll check our medicine cabinet and find a local take-back point." : "",
+                        initialSaveState: saveState,
+                        initialWritingFocus: scene == "reflection-keyboard",
+                        captureAccountID: isSaveStateCapture ? "screenshot-user" : nil,
+                        captureOperationID: isSaveStateCapture ? ScreenshotFixtures.captureOperationID : nil
+                    )
+                }
+            case "progress", "journal-empty":
+                ScreenshotTabs(selectedTab: 1) {
+                    ScreenshotJournalPage {
+                        JournalContent(logs: scene == "progress" ? ScreenshotFixtures.logs : [],
+                                       allowsActions: false, referenceDate: ScreenshotFixtures.referenceDate)
+                    }
+                }
+            case "impact-loading", "impact-threshold", "impact-populated", "impact-stale", "impact-error":
+                ScreenshotPage(width: ClimateTheme.ContentWidth.reading) {
+                    CommunityImpactScreenContent(presentation: impactPresentation)
+                }
+            case "journal-guest":
+                ScreenshotTabs(selectedTab: 1) { NavigationStack { MyNoteView() } }
+            case "account":
+                ScreenshotTabs(selectedTab: 2) { NavigationStack { AccountView() } }
+            case "privacy":
+                NavigationStack { PrivacyView() }
+            case "signin-unavailable", "signin":
+                SignInView()
+            case "feed-loading":
+                ScreenshotTabs(selectedTab: 0) { ScreenshotChrome { FeedLoadingView() } }
+            case "feed-refreshing":
+                ScreenshotTabs(selectedTab: 0) {
+                    ScreenshotPage {
+                        FeedRetainedContent(articles: ScreenshotFixtures.articles, isRefreshing: true, errorMessage: nil)
+                    }
+                }
+            case "feed-stale":
+                ScreenshotTabs(selectedTab: 0) {
+                    ScreenshotPage {
+                        FeedRetainedContent(articles: ScreenshotFixtures.articles, isRefreshing: false, errorMessage: "Fixture refresh timeout")
+                    }
+                }
+            case "feed-image-loading":
+                ScreenshotTabs(selectedTab: 0) {
+                    ScreenshotPage { FeedContent(articles: ScreenshotFixtures.imageLoadingArticles) }
+                }
+            case "feed-image-error":
+                ScreenshotTabs(selectedTab: 0) {
+                    ScreenshotPage { FeedContent(articles: ScreenshotFixtures.imageFailureArticles) }
+                }
+            case "feed-empty", "feed-error":
+                ScreenshotTabs(selectedTab: 0) {
+                    ScreenshotChrome {
+                        FeedEmptyView(message: scene == "feed-error" ? "Fixture connection failure" : nil, retry: {})
+                    }
+                }
+            default:
+                ScreenshotTabs(selectedTab: 0) {
+                    ScreenshotPage {
+                        FeedContent(articles: ScreenshotFixtures.articles)
+                    }
+                }
+            }
+        }
+        .environment(\.climateMotionEnabled, false)
+        .environment(\.locale, ScreenshotConfiguration.fixtureLocale)
+        .environment(\.calendar, ScreenshotConfiguration.fixtureCalendar)
+        .environment(\.timeZone, ScreenshotConfiguration.fixtureTimeZone)
+        .dynamicTypeSize(ProcessInfo.processInfo.arguments.contains("--climate-large-text") ? .accessibility3 : .large)
+        .transaction { $0.disablesAnimations = true }
+        .allowsHitTesting(false)
+    }
+
+    private var isSaveStateCapture: Bool {
+        ["save-queued", "save-error", "save-synced"].contains(scene)
+    }
+
+    private var saveState: ReflectionSaveState? {
         switch scene {
-        case "story":
-            NavigationStack { ArticleDetailView(article: ScreenshotFixtures.article) }
-        case "summary":
-            NavigationStack { ScreenshotSummaryView() }
-        case "actions":
-            NavigationStack { ScreenshotActionsView() }
-        case "progress":
-            ScreenshotTabShell(selectedTab: 1) { ScreenshotProgressView() }
-        default:
-            ScreenshotTabShell(selectedTab: 0) { ScreenshotFeedView() }
+        case "save-queued": .queued
+        case "save-error": .failed
+        case "save-synced": .synced
+        default: nil
+        }
+    }
+
+    private var impactPresentation: CommunityImpactPresentation {
+        switch scene {
+        case "impact-threshold": .threshold(ScreenshotFixtures.communityImpact(visible: false))
+        case "impact-populated": .populated(ScreenshotFixtures.communityImpact(visible: true), isStale: false)
+        case "impact-stale": .populated(ScreenshotFixtures.communityImpact(visible: true), isStale: true)
+        case "impact-error": .error("Fixture community-impact connection failure")
+        default: .loading
         }
     }
 }
 
-private struct ScreenshotTabShell<Content: View>: View {
+/// Reaches ArticleDetailView through the same value-based NavigationStack routing as FeedView.
+/// This preserves the back affordance and the reader's actual entry context in native captures.
+private struct PushedStoryCapture: View {
+    let article: Article
+    @State private var path = NavigationPath()
+
+    var body: some View {
+        NavigationStack(path: $path) {
+            ScrollView {
+                FeedContent(articles: [article])
+                    .padding(.horizontal, ClimateTheme.Spacing.large)
+                    .padding(.top, ClimateTheme.Spacing.large)
+                    .padding(.bottom, ClimateTheme.Spacing.xxLarge)
+                    .frame(maxWidth: ClimateTheme.ContentWidth.feed)
+                    .frame(maxWidth: .infinity)
+            }
+            .background { ClimateBackdrop() }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .principal) { ClimateWordmark() } }
+            .toolbarBackground(ClimateTheme.pine, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .navigationDestination(for: Article.self) { ArticleDetailView(article: $0) }
+        }
+        .onAppear {
+            guard path.isEmpty else { return }
+            path.append(article)
+        }
+    }
+}
+
+/// Uses ArticleDetailView's production ScrollViewReader anchor to expose the story-local
+/// image and caption below the introduction on a phone capture.
+private struct PushedStoryVisualCapture: View {
+    let article: Article
+    @State private var path = NavigationPath()
+
+    var body: some View {
+        NavigationStack(path: $path) {
+            ScrollView {
+                FeedContent(articles: [article])
+                    .padding(.horizontal, ClimateTheme.Spacing.large)
+                    .padding(.top, ClimateTheme.Spacing.large)
+                    .padding(.bottom, ClimateTheme.Spacing.xxLarge)
+                    .frame(maxWidth: ClimateTheme.ContentWidth.feed)
+                    .frame(maxWidth: .infinity)
+            }
+            .background { ClimateBackdrop() }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .principal) { ClimateWordmark() } }
+            .toolbarBackground(ClimateTheme.pine, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .navigationDestination(for: Article.self) {
+                ArticleDetailView(article: $0, initialScrollTarget: .articleVisual)
+            }
+        }
+        .onAppear {
+            guard path.isEmpty else { return }
+            path.append(article)
+        }
+    }
+}
+
+/// Mirrors MyNoteView's production width, horizontal padding, and bottom spacing.
+private struct ScreenshotJournalPage<Content: View>: View {
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        ScreenshotChrome {
+            ScrollView {
+                content()
+                    .padding(ClimateTheme.Spacing.large)
+                    .padding(.bottom, ClimateTheme.Spacing.large)
+                    .frame(maxWidth: ClimateTheme.ContentWidth.reading, alignment: .leading)
+                    .frame(maxWidth: .infinity)
+            }
+            .scrollIndicators(.hidden)
+        }
+    }
+}
+
+private struct ScreenshotPage<Content: View>: View {
+    let width: CGFloat
+    let content: () -> Content
+
+    init(
+        width: CGFloat = ClimateTheme.ContentWidth.feed,
+        @ViewBuilder content: @escaping () -> Content
+    ) {
+        self.width = width
+        self.content = content
+    }
+
+    var body: some View {
+        ScreenshotChrome {
+            ScrollView {
+                content()
+                    .padding(.horizontal, ClimateTheme.Spacing.large)
+                    .padding(.top, ClimateTheme.Spacing.large)
+                    .padding(.bottom, ClimateTheme.Spacing.xxLarge)
+                    .frame(maxWidth: width, alignment: .leading)
+                    .frame(maxWidth: .infinity)
+            }
+            .scrollIndicators(.hidden)
+        }
+    }
+}
+
+private struct ScreenshotChrome<Content: View>: View {
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        NavigationStack {
+            content()
+                .background { ClimateBackdrop() }
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar { ToolbarItem(placement: .principal) { ClimateWordmark() } }
+                .toolbarBackground(ClimateTheme.pine, for: .navigationBar)
+                .toolbarBackground(.visible, for: .navigationBar)
+                .toolbarColorScheme(.dark, for: .navigationBar)
+        }
+    }
+}
+
+private struct ScreenshotTabs<Content: View>: View {
     let selectedTab: Int
     @ViewBuilder let content: () -> Content
 
     var body: some View {
         TabView(selection: .constant(selectedTab)) {
-            NavigationStack { selectedTab == 0 ? AnyView(content()) : AnyView(Color.climateBackground) }
-                .tabItem { Label("Read", systemImage: "book.pages") }
-                .tag(0)
-            NavigationStack { selectedTab == 1 ? AnyView(content()) : AnyView(Color.climateBackground) }
-                .tabItem { Label("My Note", systemImage: "leaf") }
-                .tag(1)
-            NavigationStack { Color.climateBackground }
-                .tabItem { Label("Account", systemImage: "person.crop.circle") }
-                .tag(2)
+            tab(0).tabItem { Label("Read", systemImage: "book.pages") }.tag(0)
+            tab(1).tabItem { Label("My Note", systemImage: "book.closed") }.tag(1)
+            tab(2).tabItem { Label("Account", systemImage: "person.crop.circle") }.tag(2)
         }
-    }
-}
-
-private struct ScreenshotFeedView: View {
-    var body: some View {
-        ScrollView {
-            LazyVStack(spacing: 20) {
-                ScreenshotArticleCard(
-                    title: "Pharmaceutical pollution",
-                    excerpt: "Medicine protects our health—but traces that reach rivers can affect wildlife and water systems."
-                )
-                ScreenshotArticleCard(
-                    title: "Lignin-based materials in tires and coatings",
-                    excerpt: "A material found in plant cell walls could help replace fossil-based ingredients in everyday products."
-                )
-            }
-            .padding(.horizontal, 18)
-            .padding(.bottom, 28)
-        }
-        .background(Color.climateBackground)
-        .navigationTitle("The Climate Note")
-    }
-}
-
-private struct ScreenshotArticleCard: View {
-    let title: String
-    let excerpt: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("CLIMATE").font(.caption.weight(.bold)).tracking(1.2).foregroundStyle(Color.climateSage)
-            Text(title).font(.title2.bold())
-            Text(excerpt).foregroundStyle(.secondary).lineLimit(3)
-            Label("5 min read", systemImage: "clock").font(.caption).foregroundStyle(.secondary)
-        }
-        .padding(16)
-        .background(.background, in: .rect(cornerRadius: 28))
-        .shadow(color: .black.opacity(0.06), radius: 18, y: 8)
-    }
-}
-
-private struct ScreenshotSummaryView: View {
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                Text("PHARMACEUTICAL POLLUTION").font(.caption.bold()).tracking(1.1).foregroundStyle(Color.climateSage)
-                Label("The note in a nutshell", systemImage: "sparkles").font(.largeTitle.bold())
-                SummaryItem(title: "What’s happening", copy: ScreenshotFixtures.summary.problem)
-                SummaryItem(title: "Why it matters", copy: ScreenshotFixtures.summary.whyItMatters)
-                SummaryItem(title: "What we can do", copy: ScreenshotFixtures.summary.whatWeCanDo)
-                Text("AI-generated summary · The original article is unchanged.")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-            .padding(24)
-            .background(Color.climateSage.opacity(0.11), in: .rect(cornerRadius: 28))
-            .padding(18)
-        }
-        .background(Color.climateBackground)
-        .navigationTitle("Simple and clear")
-        .navigationBarTitleDisplayMode(.inline)
-    }
-}
-
-private struct SummaryItem: View {
-    let title: String
-    let copy: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            Text(title).font(.title3.bold())
-            Text(copy).font(.body).foregroundStyle(.secondary).lineSpacing(5)
-        }
-    }
-}
-
-private struct ScreenshotActionsView: View {
-    var body: some View {
-        ScrollView {
-            ClimateActionPicker(article: ScreenshotFixtures.article, actions: ScreenshotFixtures.actions)
-                .padding(18)
-        }
-        .background(Color.climateBackground)
-        .navigationTitle("Take one step")
-        .navigationBarTitleDisplayMode(.inline)
-    }
-}
-
-private struct ScreenshotProgressView: View {
-    private let calendar = Calendar.current
-
-    var body: some View {
-        ScrollView {
-            VStack(spacing: 22) {
-                VStack(alignment: .leading, spacing: 14) {
-                    Text("This week").font(.headline)
-                    HStack {
-                        ForEach(0..<7) { offset in
-                            let completed = [0, 2, 3, 5].contains(offset)
-                            VStack(spacing: 8) {
-                                Text(day(offset).formatted(.dateTime.weekday(.narrow))).font(.caption)
-                                Text(day(offset).formatted(.dateTime.day()))
-                                    .font(.subheadline.bold())
-                                    .frame(width: 38, height: 38)
-                                    .background(completed ? Color.climateSage : Color.secondary.opacity(0.1), in: .circle)
-                                    .foregroundStyle(completed ? .white : .primary)
-                            }
-                            .frame(maxWidth: .infinity)
-                        }
-                    }
-                }
-                .padding(22)
-                .background(.background, in: .rect(cornerRadius: 24))
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Your impact").font(.headline)
-                    Text("4").font(.system(size: 54, weight: .bold, design: .rounded)).foregroundStyle(Color.climateSage)
-                    Text("climate actions completed").foregroundStyle(.secondary)
-                    Text("1.6 kg CO₂e").font(.title2.bold())
-                    Text("estimated only from supported, measurable actions")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(22)
-                .background(.background, in: .rect(cornerRadius: 24))
-
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack {
-                        Text("Return unused medicine safely").font(.headline)
-                        Spacer()
-                        Image(systemName: "checkmark.circle.fill").foregroundStyle(Color.climateSage)
-                    }
-                    Text("Used a local medicine take-back location instead of throwing medicine away.")
-                        .foregroundStyle(.secondary)
-                    Text("Pharmaceutical pollution").font(.caption).foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(18)
-                .background(.background, in: .rect(cornerRadius: 20))
-            }
-            .padding(18)
-        }
-        .background(Color.climateBackground)
-        .navigationTitle("My Note")
+        .tint(ClimateTheme.mintBright)
+        .toolbarBackground(ClimateTheme.pine, for: .tabBar)
+        .toolbarBackground(.visible, for: .tabBar)
+        .toolbarColorScheme(.dark, for: .tabBar)
+        .background(ClimateTheme.canvas)
     }
 
-    private func day(_ offset: Int) -> Date {
-        let today = calendar.startOfDay(for: Date())
-        let weekday = calendar.component(.weekday, from: today)
-        let start = calendar.date(byAdding: .day, value: -(weekday - calendar.firstWeekday + 7) % 7, to: today) ?? today
-        return calendar.date(byAdding: .day, value: offset, to: start) ?? today
+    @ViewBuilder private func tab(_ index: Int) -> some View {
+        if selectedTab == index { content() } else { ClimateBackdrop() }
     }
 }
 
 private enum ScreenshotFixtures {
+    static let referenceDate = ScreenshotConfiguration.fixtureCalendar.date(from: DateComponents(year: 2026, month: 9, day: 9, hour: 12))!
+    static let captureOperationID = UUID(uuidString: "99B57C1A-327B-4A8A-9D3A-BDDF5EBB0E91")!
+    static var articles: [Article] { [article, earlierArticle] }
+    static let earlierArticle = Article(
+        documentID: "fixture-materials", slug: "lignin-based-materials", title: "A different future for everyday materials",
+        author: "The Climate Note", topic: "Materials",
+        excerpt: "What plant cell walls can teach us about making the things we use every day.",
+        status: "published", contentBlocks: [.paragraph("This is deterministic sample content for native visual QA.")],
+        sourceLinks: [], externalLinks: nil, readingMinutes: 4,
+        publishedAt: ScreenshotConfiguration.fixtureCalendar.date(from: DateComponents(year: 2026, month: 8, day: 30)),
+        generation: nil, coverAsset: fixtureCover
+    )
+    static var imageLoadingArticles: [Article] { [articleWithCover(imageLoadingCover), earlierArticle] }
+    static var imageFailureArticles: [Article] { [articleWithCover(imageFailureCover), earlierArticle] }
+    static var logs: [ActionLog] {
+        [
+            ActionLog(documentID: "fixture-planned", userID: "fixture", articleID: article.id,
+                      articleTitle: article.title, actionID: actions[0].id, title: actions[0].title,
+                      detail: actions[0].instruction, category: "water", status: .planned,
+                      createdAt: referenceDate, completedAt: nil, impactEstimate: nil),
+            ActionLog(documentID: "fixture-completed", userID: "fixture", articleID: article.id,
+                      articleTitle: article.title, actionID: actions[1].id, title: actions[1].title,
+                      detail: actions[1].instruction, category: "learning", status: .completed,
+                      createdAt: referenceDate.addingTimeInterval(-172800),
+                      completedAt: referenceDate.addingTimeInterval(-86400),
+                      impactEstimate: ImpactEstimate(
+                        value: 3.2,
+                        unit: "kg CO₂e",
+                        label: "estimated CO₂e avoided",
+                        methodology: "Fixture estimate for native visual QA.",
+                        factorID: "passenger-vehicle-mile-avoided-us",
+                        metric: "co2e",
+                        factorVersion: "EPA-2023",
+                        input: ImpactInput(quantity: 8, unit: "mile")
+                      )),
+            ActionLog(documentID: "fixture-reflection", userID: "fixture", articleID: article.id,
+                      articleTitle: article.title, actionID: "custom", title: "A private reflection",
+                      detail: "I’ll check our medicine cabinet and find a local take-back point.", category: "custom", status: .planned,
+                      kind: .reflection, createdAt: referenceDate.addingTimeInterval(-3600), completedAt: nil, impactEstimate: nil)
+        ]
+    }
+
     static let summary = ClimateSummary(
         problem: "Medicines can pass through people, drains, and waste systems, leaving small traces in rivers and other waterways.",
         whyItMatters: "Even tiny amounts can affect fish and other wildlife over time, while many disposal systems were not designed to remove every compound.",
         whatWeCanDo: "Use an official medicine take-back location, follow local disposal guidance, and share safe options with your household."
     )
 
+    static func communityImpact(visible: Bool) -> CommunityImpactDocument {
+        CommunityImpactDocument(
+            schemaVersion: 1,
+            visible: visible,
+            minimumContributors: 10,
+            contributorCount: visible ? 42 : nil,
+            eligibleActionCount: visible ? 187 : nil,
+            estimatedKgCO2e: visible ? 1_260 : nil,
+            updatedAt: visible ? referenceDate : nil,
+            methodology: CommunityImpactMethodology(
+                metric: "co2e",
+                factorVersions: visible ? ["EPA-2023"] : [],
+                description: "Estimates use supported completed actions and versioned factors."
+            )
+        )
+    }
+
     static let actions = [
         SuggestedAction(
             id: "action-1",
             title: "Return unused medicine safely",
-            instruction: "Find a pharmacy or community medicine take-back location and bring one unused medication there this week.",
+            instruction: "Bring one unused medication to a pharmacy or community take-back location this week.",
             cadence: "One trip this week",
             evidence: "Use a medicine take-back location.",
             category: "water",
@@ -221,7 +369,7 @@ private enum ScreenshotFixtures {
         SuggestedAction(
             id: "action-2",
             title: "Check your local guidance",
-            instruction: "Look up your city’s official medicine-disposal instructions and save the approved location in your phone.",
+            instruction: "Look up your city’s official medicine-disposal instructions and save the approved location.",
             cadence: "Ten minutes today",
             evidence: "Follow local disposal guidance.",
             category: "learning",
@@ -231,10 +379,10 @@ private enum ScreenshotFixtures {
         SuggestedAction(
             id: "action-3",
             title: "Share one safe option",
-            instruction: "Send your household the address of a verified medicine take-back location near you.",
+            instruction: "Send your household the address of a verified medicine take-back location nearby.",
             cadence: "Share once this week",
             evidence: "Share safe disposal options.",
-            category: "civic",
+            category: "community",
             factorId: nil,
             factorQuantity: nil
         ),
@@ -245,7 +393,7 @@ private enum ScreenshotFixtures {
         slug: "pharmaceutical-pollution",
         title: "Pharmaceutical pollution",
         author: "The Climate Note",
-        topic: "Climate",
+        topic: "Water",
         excerpt: "Medicine protects our health—but traces that reach rivers can affect wildlife and water systems.",
         status: "published",
         contentBlocks: [
@@ -257,7 +405,7 @@ private enum ScreenshotFixtures {
         sourceLinks: [],
         externalLinks: nil,
         readingMinutes: 5,
-        publishedAt: Date(),
+        publishedAt: ScreenshotConfiguration.fixtureCalendar.date(from: DateComponents(year: 2026, month: 9, day: 6)),
         generation: ArticleGeneration(
             summary: summary,
             suggestedActions: actions,
@@ -265,10 +413,50 @@ private enum ScreenshotFixtures {
                 searchQuery: "pharmaceutical pollution river research",
                 altText: "A river flowing through a green landscape near a community",
                 placement: "after-introduction",
-                generationPrompt: "Clean editorial illustration of medicine disposal and a protected river"
+                generationPrompt: "Editorial photograph of a protected river landscape"
             )
         ),
-        coverAsset: nil
+        coverAsset: fixtureCover
     )
+
+    static let fixtureCover = CoverAsset(
+        url: URL(string: "climate-note-fixture://river")!,
+        altText: "A calm river through a wooded landscape",
+        caption: "Fixture image used only for deterministic native QA",
+        attribution: "Bundled Climate Note asset",
+        license: "Fixture-only bundled asset",
+        sourceUrl: nil,
+        generated: false
+    )
+
+    static let imageLoadingCover = CoverAsset(
+        url: URL(string: "climate-note-fixture-loading://river")!,
+        altText: "Story image loading",
+        caption: "Fixture loading state",
+        attribution: "",
+        license: "Fixture-only",
+        sourceUrl: nil,
+        generated: false
+    )
+
+    static let imageFailureCover = CoverAsset(
+        url: URL(string: "climate-note-fixture-missing://river")!,
+        altText: "Story image unavailable",
+        caption: "Fixture failure state",
+        attribution: "",
+        license: "Fixture-only",
+        sourceUrl: nil,
+        generated: false
+    )
+
+    static func articleWithCover(_ cover: CoverAsset) -> Article {
+        Article(
+            documentID: article.documentID, slug: article.slug, title: article.title, author: article.author,
+            topic: article.topic, excerpt: article.excerpt, status: article.status,
+            contentBlocks: article.contentBlocks, sourceLinks: article.sourceLinks,
+            externalLinks: article.externalLinks, readingMinutes: article.readingMinutes,
+            publishedAt: article.publishedAt, generation: article.generation, coverAsset: cover
+        )
+    }
 }
 #endif

@@ -4,7 +4,7 @@ import CryptoKit
 @preconcurrency import FirebaseAuth
 import FirebaseCore
 import FirebaseMessaging
-import GoogleSignIn
+@preconcurrency import GoogleSignIn
 import UIKit
 
 @MainActor
@@ -35,16 +35,84 @@ final class AuthService: NSObject, ObservableObject {
         }
     }
 
+    /// True when the signed-in Firebase user is an anonymous guest account.
+    var isGuest: Bool { user?.isAnonymous == true }
+
+    /// Surfaces misconfiguration that would make Apple/Google sign-in fail at runtime.
+    /// Guest (anonymous) sign-in only needs Firebase itself.
+    var signInConfigurationIssue: String? {
+        guard FirebaseApp.app() != nil else {
+            return "Firebase is not configured in this build. Guest and provider sign-in are unavailable."
+        }
+        guard let clientID = FirebaseApp.app()?.options.clientID, !clientID.isEmpty else {
+            return "Google Sign-In is missing a client ID. Check GoogleService-Info.plist."
+        }
+        let expectedScheme = Bundle.main.object(forInfoDictionaryKey: "REVERSED_CLIENT_ID") as? String
+            ?? reversedClientID(from: clientID)
+        let schemes = Bundle.main.object(forInfoDictionaryKey: "CFBundleURLTypes") as? [[String: Any]] ?? []
+        let registered = schemes
+            .compactMap { $0["CFBundleURLSchemes"] as? [String] }
+            .flatMap { $0 }
+        if let expectedScheme, !expectedScheme.isEmpty, !registered.contains(expectedScheme) {
+            return "Google Sign-In URL scheme is not registered. Add \(expectedScheme) to Info.plist URL types."
+        }
+        return nil
+    }
+
+    private func reversedClientID(from clientID: String) -> String? {
+        guard clientID.hasSuffix(".apps.googleusercontent.com") else { return nil }
+        let prefix = clientID.replacingOccurrences(of: ".apps.googleusercontent.com", with: "")
+        return "com.googleusercontent.apps.\(prefix)"
+    }
+
+    /// Creates a Firebase anonymous guest account so notes can sync under a private UID.
+    func signInAsGuest() async {
+        guard beginAuthentication() else { return }
+        if user?.isAnonymous == true { return }
+        isWorking = true
+        defer { isWorking = false }
+        do {
+            try await Auth.auth().signInAnonymously()
+        } catch {
+            show(error, fallback: "A guest account could not be created. Check your connection and try again.")
+        }
+    }
+
     func signInWithGoogle() async {
         guard beginAuthentication() else { return }
         isWorking = true
         defer { isWorking = false }
         do {
             let authorization = try await googleAuthorization()
-            try await Auth.auth().signIn(with: authorization.credential)
+            try await applyCredential(authorization.credential)
         } catch {
             show(error, fallback: "Google Sign-In could not be completed. Please check your connection and try again.")
         }
+    }
+
+    /// Links Apple/Google to an existing guest, or signs in when starting fresh.
+    private func applyCredential(_ credential: AuthCredential) async throws {
+        if let user, user.isAnonymous {
+            do {
+                try await user.link(with: credential)
+                return
+            } catch {
+                // Prefer linking so guest notes keep the same UID; fall back if the
+                // provider is already tied to another account.
+                let nsError = error as NSError
+                let linkConflictCodes: Set<Int> = [
+                    17025, // credentialAlreadyInUse
+                    17007, // emailAlreadyInUse
+                    17015, // providerAlreadyLinked
+                ]
+                if nsError.domain == AuthErrorDomain, linkConflictCodes.contains(nsError.code) {
+                    try await Auth.auth().signIn(with: credential)
+                    return
+                }
+                throw error
+            }
+        }
+        try await Auth.auth().signIn(with: credential)
     }
 
     func configureAppleSignIn(_ request: ASAuthorizationAppleIDRequest) {
@@ -110,12 +178,35 @@ final class AuthService: NSObject, ObservableObject {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
             let (data, response) = try await URLSession.shared.data(for: request)
             guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw AuthError.exportFailed }
-            let url = FileManager.default.temporaryDirectory.appending(path: "the-climate-note-export.json")
-            try data.write(to: url, options: .atomic)
-            return url
+            Self.removeStaleExportFiles()
+            let url = FileManager.default.temporaryDirectory
+                .appending(path: "climate-note-export-\(UUID().uuidString).json")
+            try data.write(to: url, options: [.atomic, .completeFileProtection])
+            var resourceValues = URLResourceValues()
+            resourceValues.isExcludedFromBackup = true
+            var writableURL = url
+            try? writableURL.setResourceValues(resourceValues)
+            return writableURL
         } catch {
             errorMessage = "Your export could not be prepared. Please try again."
             return nil
+        }
+    }
+
+    static func removeExportFile(_ url: URL?) {
+        guard let url else { return }
+        try? FileManager.default.removeItem(at: url)
+    }
+
+    static func removeStaleExportFiles() {
+        let directory = FileManager.default.temporaryDirectory
+        guard let files = try? FileManager.default.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: nil
+        ) else { return }
+        for file in files where file.lastPathComponent.hasPrefix("climate-note-export-")
+            || file.lastPathComponent == "the-climate-note-export.json" {
+            try? FileManager.default.removeItem(at: file)
         }
     }
 
@@ -196,7 +287,7 @@ final class AuthService: NSObject, ObservableObject {
 
             switch operation {
             case .signIn:
-                try await Auth.auth().signIn(with: credential)
+                try await applyCredential(credential)
             case .deleteAccount:
                 guard let user else { return }
                 guard
@@ -318,15 +409,19 @@ extension AuthService: ASAuthorizationControllerDelegate {
 
 extension AuthService: ASAuthorizationControllerPresentationContextProviding {
     func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
-        UIApplication.shared.connectedScenes
+        let scenes = UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }
+        let activeWindows = scenes
             .filter { $0.activationState == .foregroundActive }
             .flatMap(\.windows)
-            .first(where: \.isKeyWindow)
-            ?? UIApplication.shared.connectedScenes
-                .compactMap { $0 as? UIWindowScene }
-                .flatMap(\.windows)
-                .first(where: { !$0.isHidden && $0.alpha > 0 })
-            ?? ASPresentationAnchor()
+
+        if let keyWindow = activeWindows.first(where: \.isKeyWindow) {
+            return keyWindow
+        }
+
+        let visibleWindow = scenes
+            .flatMap(\.windows)
+            .first(where: { !$0.isHidden && $0.alpha > 0 })
+        return visibleWindow ?? ASPresentationAnchor()
     }
 }

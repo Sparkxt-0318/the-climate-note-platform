@@ -1,0 +1,17 @@
+.DS_Store
+DerivedData/
+build/
+*.ipa
+*.xcarchive
+*.xcuserstate
+xcuserdata/
+.gh-config/
+
+# Generated design concepts are intentionally kept out of the build repository.
+PreviewScreenshots/
+PreviewScreenshots-v2/
+PreviewScreenshots-v3/
+PreviewScreenshots-v4/
+
+# Windows MAX_PATH leftovers
+ClimateNote/Resources/Assets.xcassets/Cover-seeking-shade-killing-*/

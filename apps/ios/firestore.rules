@@ -1,0 +1,43 @@
+rules_version = '2';
+
+// Deploy with Firebase CLI. Private user data must never be world-readable.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    // Private notes, preferences, and notification settings.
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+
+      match /actionLogs/{logId} {
+        allow read, create, update, delete: if isOwner(userId);
+      }
+
+      match /preferences/{docId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // Public editorial content for guest reading.
+    match /articles/{articleId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Server-owned community totals. Clients may read; only backend may write.
+    match /communityImpact/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
