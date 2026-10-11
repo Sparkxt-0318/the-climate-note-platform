@@ -82,6 +82,23 @@ export default function AdminPage() {
     }
   }
 
+  async function initializeAll() {
+    if (!user || !window.confirm("Initialize every eligible DOCX in the authorized Drive folder? Existing unchanged articles will be skipped.")) return;
+    setWorking(true);
+    setMessage("Initializing every eligible Drive article. Keep this page open…");
+    try {
+      const body = await adminFetch(user, "/api/admin/ingest?scope=all", { method: "POST" });
+      const failed = (body.items as IngestionItem[]).find((item) => item.status === "failed");
+      const result = `Finished all: ${body.counts.published} published, ${body.counts.unchanged} unchanged, ${body.counts.failed} failed, ${body.counts.ignored} ignored.`;
+      setMessage(failed?.detail ? `${result} ${failed.name}: ${failed.detail}` : result);
+      await loadArticles(user);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Full initialization failed.");
+    } finally {
+      setWorking(false);
+    }
+  }
+
   return (
     <div className="page-shell admin-shell">
       <p className="eyebrow">Private workspace</p>
@@ -93,6 +110,7 @@ export default function AdminPage() {
         <>
           <div className="admin-toolbar">
             <button className="primary-button" type="button" onClick={syncNow} disabled={working}>Sync Drive now</button>
+            <button className="secondary-button" type="button" onClick={initializeAll} disabled={working}>Initialize all articles</button>
             <button className="secondary-button" type="button" onClick={() => signOut(getClientAuth())}>Sign out</button>
           </div>
           <div className="admin-list">

@@ -16,7 +16,12 @@ struct Article: Codable, Identifiable, Hashable, Sendable {
     let readingMinutes: Int
     let publishedAt: Date?
     let generation: ArticleGeneration?
-    let coverAsset: CoverAsset?
+    var coverAsset: CoverAsset?
+
+    var displayAuthor: String {
+        let value = author?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return value.isEmpty ? "The Climate Note" : value
+    }
 }
 
 struct ExternalLinks: Codable, Hashable, Sendable {
@@ -86,6 +91,56 @@ struct CoverAsset: Codable, Hashable, Sendable {
     let license: String
     let sourceUrl: URL?
     let generated: Bool
+    /// Additive editorial provenance keeps published pre-pipeline articles
+    /// readable while supporting approved third-party cover records.
+    let provider: String?
+    let providerAssetId: String?
+    let photographer: String?
+    let licenseUrl: URL?
+    let crop: CoverCrop?
+    let contentHash: String?
+    /// Kept as the server's ISO-8601 string so a malformed historic date does
+    /// not reject an entire Firestore article.
+    let retrievedAt: String?
+
+    init(
+        url: URL,
+        altText: String,
+        caption: String,
+        attribution: String,
+        license: String,
+        sourceUrl: URL?,
+        generated: Bool,
+        provider: String? = nil,
+        providerAssetId: String? = nil,
+        photographer: String? = nil,
+        licenseUrl: URL? = nil,
+        crop: CoverCrop? = nil,
+        contentHash: String? = nil,
+        retrievedAt: String? = nil
+    ) {
+        self.url = url
+        self.altText = altText
+        self.caption = caption
+        self.attribution = attribution
+        self.license = license
+        self.sourceUrl = sourceUrl
+        self.generated = generated
+        self.provider = provider
+        self.providerAssetId = providerAssetId
+        self.photographer = photographer
+        self.licenseUrl = licenseUrl
+        self.crop = crop
+        self.contentHash = contentHash
+        self.retrievedAt = retrievedAt
+    }
+}
+
+struct CoverCrop: Codable, Hashable, Sendable {
+    let x: Double
+    let y: Double
+    let width: Double
+    let height: Double
 }
 
 struct ArticleGeneration: Codable, Hashable, Sendable {

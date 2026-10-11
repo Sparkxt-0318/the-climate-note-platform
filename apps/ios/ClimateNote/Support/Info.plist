@@ -31,6 +31,8 @@
     <string>$(CURRENT_PROJECT_VERSION)</string>
     <key>ClimateNoteAPIBaseURL</key>
     <string>$(CLIMATE_NOTE_API_BASE_URL)</string>
+    <key>PixabayAPIKey</key>
+    <string>$(PIXABAY_API_KEY)</string>
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>
     <key>FirebaseMessagingAutoInitEnabled</key>

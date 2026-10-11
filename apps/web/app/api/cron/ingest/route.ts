@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { runDriveIngestion } from "@/lib/ingestion/pipeline";
+import { noStoreJson } from "@/lib/http/security";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -15,13 +16,10 @@ function authorized(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  if (!authorized(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!authorized(request)) return noStoreJson({ error: "Unauthorized" }, { status: 401 });
   try {
-    return NextResponse.json(await runDriveIngestion());
-  } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Ingestion failed." },
-      { status: 500 },
-    );
+    return noStoreJson(await runDriveIngestion());
+  } catch {
+    return noStoreJson({ error: "Ingestion failed." }, { status: 500 });
   }
 }

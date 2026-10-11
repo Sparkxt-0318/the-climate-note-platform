@@ -3,6 +3,8 @@ import { createSign } from "node:crypto";
 import { z } from "zod";
 
 export const docxMimeType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+export const maximumDocxBytes = 10_000_000;
+const maximumSourceDocuments = 1_000;
 
 const driveFileSchema = z.object({
   id: z.string(),
@@ -102,6 +104,9 @@ export async function listSourceDocuments(): Promise<DriveFile[]> {
     const response = await driveFetch(`/drive/v3/files?${params}`);
     const page = driveListSchema.parse(await response.json());
     files.push(...page.files);
+    if (files.length > maximumSourceDocuments) {
+      throw new Error("The source folder exceeds the 1,000-document safety limit.");
+    }
     pageToken = page.nextPageToken;
   } while (pageToken);
 
@@ -110,5 +115,24 @@ export async function listSourceDocuments(): Promise<DriveFile[]> {
 
 export async function downloadDriveFile(fileId: string) {
   const response = await driveFetch(`/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&supportsAllDrives=true`);
-  return Buffer.from(await response.arrayBuffer());
+  const declaredLength = Number(response.headers.get("content-length"));
+  if (Number.isFinite(declaredLength) && declaredLength > maximumDocxBytes) {
+    throw new Error("The source DOCX exceeds the 10 MB ingestion limit.");
+  }
+
+  const reader = response.body?.getReader();
+  if (!reader) throw new Error("The source DOCX response has no body.");
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maximumDocxBytes) {
+      await reader.cancel();
+      throw new Error("The source DOCX exceeds the 10 MB ingestion limit.");
+    }
+    chunks.push(value);
+  }
+  return Buffer.concat(chunks.map((chunk) => Buffer.from(chunk)));
 }

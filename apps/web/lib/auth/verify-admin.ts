@@ -1,6 +1,7 @@
 import "server-only";
 import { NextRequest } from "next/server";
 import { verifyUser } from "@/lib/auth/verify-user";
+import { SafeHttpError } from "@/lib/http/security";
 
 export async function verifyAdmin(request: NextRequest) {
   const user = await verifyUser(request);
@@ -8,6 +9,9 @@ export async function verifyAdmin(request: NextRequest) {
     .split(",")
     .map((email) => email.trim().toLowerCase())
     .filter(Boolean);
-  if (user.admin === true || (user.email && emails.includes(user.email.toLowerCase()))) return user;
-  throw new Error("Administrator access is required.");
+  if (
+    user.admin === true ||
+    (user.email_verified === true && user.email && emails.includes(user.email.toLowerCase()))
+  ) return user;
+  throw new SafeHttpError(403, "Administrator access is required.", "administrator-required");
 }

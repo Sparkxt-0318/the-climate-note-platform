@@ -7,7 +7,22 @@
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "publishedAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "impactReceipts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "uid", "order": "ASCENDING" },
+        { "fieldPath": "logID", "order": "ASCENDING" }
+      ]
     }
   ],
-  "fieldOverrides": []
+  "fieldOverrides": [
+    {
+      "collectionGroup": "_securityRateLimits",
+      "fieldPath": "expiresAt",
+      "ttl": true,
+      "indexes": []
+    }
+  ]
 }

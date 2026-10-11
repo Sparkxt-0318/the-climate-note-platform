@@ -1,28 +1,50 @@
 import "server-only";
-import { generateCloudflareImage } from "@/lib/media/cloudflare";
-import { generateEditorialFallback } from "@/lib/media/editorial";
-import { searchNasaImages } from "@/lib/media/nasa";
-import type { VisualCandidate } from "@/lib/media/types";
-import { searchWikimedia } from "@/lib/media/wikimedia";
+import { downloadPexelsImage } from "@/lib/media/download";
+import { sanitizePexelsImage } from "@/lib/media/image";
+import { rankPexelsPhotos } from "@/lib/media/policy";
+import { searchPexelsPhotos } from "@/lib/media/pexels";
+import { PEXELS_LICENSE_URL, type LicensedVisualCandidate } from "@/lib/media/types";
 
-export async function selectArticleVisual(searchQuery: string, generationPrompt: string): Promise<VisualCandidate> {
-  const errors: string[] = [];
-  for (const search of [searchWikimedia, searchNasaImages]) {
+export async function selectArticleVisual({
+  searchQuery,
+  altText,
+  recentProviderAssetIds,
+}: {
+  searchQuery: string;
+  altText: string;
+  recentProviderAssetIds: ReadonlySet<string>;
+}): Promise<LicensedVisualCandidate | null> {
+  const photos = await searchPexelsPhotos(searchQuery);
+  const ranked = rankPexelsPhotos(photos, searchQuery, recentProviderAssetIds).slice(0, 3);
+
+  for (const photo of ranked) {
     try {
-      const candidate = await search(searchQuery);
-      if (candidate) return candidate;
-    } catch (error) {
-      errors.push(error instanceof Error ? error.message : String(error));
+      const downloaded = await downloadPexelsImage(photo.imageUrl);
+      const normalized = await sanitizePexelsImage(downloaded.bytes);
+      const retrievedAt = new Date().toISOString();
+      const caption = photo.alt || `Pexels photograph selected for ${searchQuery}.`;
+
+      return {
+        ...normalized,
+        altText,
+        caption,
+        attribution: `Photo by ${photo.photographer} via Pexels`,
+        license: "Pexels License",
+        licenseUrl: PEXELS_LICENSE_URL,
+        sourceUrl: photo.photoUrl,
+        generated: false,
+        provider: "pexels",
+        providerAssetId: photo.id,
+        photographer: photo.photographer,
+        retrievedAt,
+        selectionQuery: searchQuery,
+        selectionScore: photo.score,
+      };
+    } catch {
+      // A candidate may disappear or fail decoding after search. Continue only
+      // through the already-ranked licensed shortlist, then publish text-only.
     }
   }
 
-  try {
-    return await generateCloudflareImage(
-      `${generationPrompt} Landscape 16:9 composition. Clean youth-focused climate editorial style. No text, labels, logos, or photorealistic people.`,
-    );
-  } catch (error) {
-    errors.push(error instanceof Error ? error.message : String(error));
-  }
-
-  return generateEditorialFallback(searchQuery, generationPrompt);
+  return null;
 }

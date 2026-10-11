@@ -38,8 +38,9 @@ export default function SupportPage() {
         <p>
           Open <strong>Account</strong> in the app to export your private data or select
           <strong> Delete account</strong>. Account deletion permanently removes your Firebase account,
-          reflections, action history, and related private profile data. Apple may ask you to sign in
-          again so the app can securely revoke your Sign in with Apple authorization.
+          reflections, action history, related private profile data, and eligible anonymous
+          community-impact receipts. Apple may ask you to sign in again so the app can securely revoke
+          your Sign in with Apple authorization.
         </p>
       </section>
 

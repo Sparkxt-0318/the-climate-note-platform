@@ -1,14 +1,16 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { verifyAdmin } from "@/lib/auth/verify-admin";
 import { getAdminFirestore } from "@/lib/firebase/admin";
+import { enforceUserRateLimit, noStoreJson, safeErrorResponse } from "@/lib/http/security";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
-    await verifyAdmin(request);
+    const user = await verifyAdmin(request);
+    await enforceUserRateLimit(user.uid, "admin-read", 60, 60 * 1_000);
     const snapshot = await getAdminFirestore().collection("articles").orderBy("updatedAt", "desc").limit(50).get();
-    return NextResponse.json({
+    return noStoreJson({
       articles: snapshot.docs.map((document) => ({
         id: document.id,
         title: document.get("title") as string,
@@ -17,9 +19,6 @@ export async function GET(request: NextRequest) {
       })),
     });
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Articles could not be loaded." },
-      { status: 403 },
-    );
+    return safeErrorResponse(error, "Articles could not be loaded.");
   }
 }

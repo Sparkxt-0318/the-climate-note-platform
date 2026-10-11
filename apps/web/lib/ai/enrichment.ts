@@ -90,8 +90,9 @@ Action rules:
 Visual-plan rules:
 - Choose whether the key visual belongs at the cover or after the introduction.
 - Write a concise search query for a rights-cleared documentary photograph or scientific image.
+- Prefer a nature, water, material, or infrastructure subject without recognizable people, brands, logos, signage, text overlays, disaster spectacle, or suffering.
 - Write useful alt text without saying "image of".
-- Write a generation prompt for a clean editorial illustration as a fallback.
+- Set the legacy generationPrompt field to "Unused: licensed stock photography only." It is retained only for backward-compatible article decoding and is never sent to an image generator.
 - Do not request a numerical chart unless the article itself contains sufficient cited numerical data.
 
 TITLE:

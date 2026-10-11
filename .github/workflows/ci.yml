@@ -1,0 +1,62 @@
+name: Security and quality
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-quality-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+        with:
+          version: 11.19.0
+
+      - name: Install Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Reject high-severity production advisories
+        run: pnpm audit --prod --audit-level high
+
+      - name: Test web application
+        run: pnpm --filter @climate-note/web test
+
+      - name: Typecheck web application
+        run: pnpm --filter @climate-note/web typecheck
+
+      - name: Lint web application
+        run: pnpm --filter @climate-note/web lint
+
+      - name: Build web application
+        run: pnpm --filter @climate-note/web build
+
+      - name: Switch to the Firebase Functions runtime
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Test Firebase Functions
+        run: pnpm --dir functions test
+
+      - name: Typecheck Firebase Functions
+        run: pnpm --dir functions typecheck

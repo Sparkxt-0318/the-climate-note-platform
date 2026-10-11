@@ -4,16 +4,9 @@ updates:
     directory: /
     schedule:
       interval: weekly
-    groups:
-      web-dependencies:
-        patterns:
-          - "*"
-    ignore:
-      - dependency-name: "*"
-        update-types:
-          - version-update:semver-major
-
+    open-pull-requests-limit: 5
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    open-pull-requests-limit: 5

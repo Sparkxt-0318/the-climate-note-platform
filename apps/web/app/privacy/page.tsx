@@ -10,7 +10,7 @@ export default function PrivacyPage() {
     <article className="legal-shell">
       <p className="eyebrow">Privacy policy</p>
       <h1>Your notes belong to you.</h1>
-      <p className="legal-updated">Effective August 29, 2026</p>
+      <p className="legal-updated">Effective October 11, 2026</p>
 
       <section>
         <h2>What this policy covers</h2>
@@ -25,8 +25,9 @@ export default function PrivacyPage() {
         <h2>Information we collect</h2>
         <ul>
           <li>
-            <strong>Account information:</strong> a Firebase user identifier and the email address or
-            private relay address supplied by Apple or Google when you choose to sign in.
+            <strong>Account information:</strong> a Firebase user identifier, the email address or
+            private relay address supplied by Apple or Google, and provider profile information such
+            as a display name when your selected provider supplies it.
           </li>
           <li>
             <strong>Private content:</strong> reflections and actions you save, completion dates,
@@ -54,6 +55,22 @@ export default function PrivacyPage() {
       </section>
 
       <section>
+        <h2>Optional anonymous community impact</h2>
+        <p>
+          Community impact participation is off by default. If you choose it in Account, we count
+          only completed actions that have an article-specific, versioned CO₂e factor. We do not add
+          your notes, reflection text, account identity, article history, or personal total to the
+          public result.
+        </p>
+        <p>
+          We keep a private server-side receipt with the accepted factor version and amount so we can
+          maintain the aggregate accurately. The public total appears only after at least ten distinct
+          people have eligible completed actions, and it is rounded. Turning the setting off or
+          deleting your account removes your eligible receipt contributions from future totals.
+        </p>
+      </section>
+
+      <section>
         <h2>AI and published articles</h2>
         <p>
           AI may create a labeled summary and three article-specific action suggestions from an
@@ -67,9 +84,11 @@ export default function PrivacyPage() {
         <p>
           We use Google Firebase for authentication, private data, and notifications;
           Vercel for website and API hosting; Google Drive for editor-controlled source documents;
-          and a configured AI provider for article-only enrichment. Apple and Google process
-          sign-in data under their own privacy terms. These providers process information only as
-          needed to deliver their services to us.
+          Google Gemini or Groq for article-only enrichment when configured; and Pexels for licensed article
+          photography. Photo searches contain article topics rather than private user content. Apple,
+          Google, Vercel, Groq, and Pexels operate under their own terms and
+          privacy disclosures. We configure them for the roles described here and do not intentionally
+          send private reflection text to article-enrichment or photography services.
         </p>
       </section>
 
@@ -77,20 +96,28 @@ export default function PrivacyPage() {
         <h2>Your choices and account deletion</h2>
         <p>
           Notifications are off by default and can be changed in the app. In Account settings, you can
-          export your private data or permanently delete your account. Deletion removes the account,
-          private notes, action history, and related profile data from our active systems. If you need
-          help, email <a href="mailto:theclimatenote@gmail.com">theclimatenote@gmail.com</a>.
+          export your synced account data or permanently delete your account. The export includes
+          authentication profile details, synced notes and actions, your community-impact preference
+          and receipts, and essential abuse-prevention metadata. Unfinished drafts that have not synced
+          remain only on the current device and are not part of the server export. Account deletion
+          removes account-scoped local drafts on that device and removes the account, synced private
+          content, and authentication record from our active systems. It also queues removal of eligible
+          community-impact receipts from future totals; temporary reconciliation records are deleted
+          after successful processing. If you need help, email
+          {" "}<a href="mailto:theclimatenote@gmail.com">theclimatenote@gmail.com</a>.
         </p>
       </section>
 
       <section>
         <h2>Retention and security</h2>
         <p>
-          Private content is retained while your account remains active and is deleted when you use
-          the in-app deletion control, except where a short-lived backup or security record must be
-          retained for legal, fraud-prevention, or service-integrity reasons. We use access controls,
-          encrypted network connections, and per-user database rules, but no internet service can
-          guarantee absolute security.
+          Synced private content is retained while your account remains active and is removed from the
+          active service when you use the in-app deletion control. Local unfinished drafts remain on the
+          device until saved, discarded, or the account is deleted. Hosting and authentication providers
+          may retain limited backup, fraud-prevention, or security records under their own retention
+          schedules or where law requires them. We use access controls, encrypted network connections,
+          protected local files, and per-user database rules, but no internet service can guarantee
+          absolute security.
         </p>
       </section>
 

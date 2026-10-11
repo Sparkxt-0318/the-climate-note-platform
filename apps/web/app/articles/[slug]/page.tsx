@@ -16,7 +16,8 @@ function ArticleFigure({ article }: { article: NonNullable<Awaited<ReturnType<ty
       <img src={article.coverAsset.url} alt={article.coverAsset.altText} />
       <figcaption>
         {article.coverAsset.caption} {article.coverAsset.attribution}
-        {article.coverAsset.sourceUrl && <> · <a href={article.coverAsset.sourceUrl}>{article.coverAsset.license}</a></>}
+        {article.coverAsset.sourceUrl && <> · <a href={article.coverAsset.sourceUrl} rel="noreferrer">View source</a></>}
+        {article.coverAsset.licenseUrl && <> · <a href={article.coverAsset.licenseUrl} rel="noreferrer">{article.coverAsset.license}</a></>}
       </figcaption>
     </figure>
   );

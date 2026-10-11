@@ -20,3 +20,4 @@ outputs/
 *.p12
 *.pem
 .codebase-memory/
+.playwright-cli/

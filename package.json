@@ -7,6 +7,7 @@
     "dev": "pnpm --filter @climate-note/web dev",
     "lint": "pnpm --filter @climate-note/web lint",
     "test": "pnpm --filter @climate-note/web test",
-    "typecheck": "pnpm --filter @climate-note/web typecheck"
+    "typecheck": "pnpm --filter @climate-note/web typecheck",
+    "articles:initialize": "node scripts/initialize-articles.mjs"
   }
 }

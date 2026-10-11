@@ -35,6 +35,29 @@ describe("normalizeCandidates", () => {
     expect(result.title).toBe("A Descriptive Climate Title");
     expect(result.blocks[0]).toEqual({ type: "paragraph", text: opening });
   });
+
+  it("omits insecure citations before an article can be published", () => {
+    const result = normalizeCandidates([
+      { kind: "paragraph", text: "A Climate Story", bold: true, links: [] },
+      { kind: "paragraph", text: "The original body remains unchanged.", bold: false, links: [] },
+      { kind: "paragraph", text: "Sources:", bold: false, links: [] },
+      {
+        kind: "paragraph",
+        text: "[1] - http://example.org/legacy",
+        bold: false,
+        links: [{ label: "Legacy source", url: "http://example.org/legacy" }],
+      },
+      {
+        kind: "paragraph",
+        text: "[2] - https://example.org/current",
+        bold: false,
+        links: [{ label: "Current source", url: "https://example.org/current" }],
+      },
+    ]);
+
+    expect(result.sourceLinks).toEqual([{ label: "Current source", url: "https://example.org/current" }]);
+    expect(result.warnings).toContain("1 insecure source link was omitted; sources must use HTTPS.");
+  });
 });
 
 const woodSample = process.env.CLIMATE_NOTE_SAMPLE_WOOD;

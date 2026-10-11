@@ -18,7 +18,9 @@ The Climate Note is a native iPhone reading and climate-action app backed by a p
 - Accounts: required only for private climate notes and impact tracking
 - Reflections: private; no public user-generated content
 - Publishing: automated from the approved Google Drive folder with validation gates
-- AI: Gemini primary with Groq text fallback; article image generation is disabled for version 1
+- AI: Gemini primary with Groq text fallback; the original article body remains immutable
+- Photography: licensed Pexels search with automatic eligibility checks, recorded attribution and a text-only fallback
+- Community impact: optional and off by default; server-calculated CO₂e totals appear only after the privacy threshold
 - Hosting: Vercel for the website/admin/jobs; Firebase for auth, private data, and notifications
 - Support: theclimatenote@gmail.com
 
@@ -41,7 +43,12 @@ pnpm typecheck
 pnpm lint
 ```
 
+To initialize every verified article from the authorized Google Drive source, use the explicit,
+authenticated bulk operation documented in `docs/CONTENT_PIPELINE.md`. It is idempotent and is never
+run by the iPhone client or normal app startup.
+
 Open `apps/ios/ClimateNote.xcodeproj` in Xcode. Firebase and Google Sign-In are resolved with
-Swift Package Manager. Production secrets stay in Vercel and are never committed to this repository.
+Swift Package Manager. Production secrets, including `PEXELS_API_KEY`, stay in Vercel and are never
+committed to this repository.
 
 See `CONTRIBUTING.md` for the team workflow and `docs/TEAM_OPERATIONS.md` for service access and releases.

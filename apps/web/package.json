@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.12.0"
   },
   "scripts": {
     "dev": "next dev",
@@ -16,17 +16,17 @@
   },
   "dependencies": {
     "@google/genai": "2.19.0",
-    "@vercel/blob": "^2.8.0",
+    "@vercel/blob": "2.8.1",
     "cheerio": "1.2.0",
-    "firebase": "12.18.0",
-    "firebase-admin": "13.5.0",
+    "firebase": "13.0.0",
+    "firebase-admin": "14.5.0",
     "groq-sdk": "1.6.0",
-    "mammoth": "1.12.1",
-    "next": "16.3.3",
+    "mammoth": "1.13.0",
+    "next": "16.3.8",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "sanitize-html": "2.17.7",
-    "sharp": "0.35.4",
+    "sanitize-html": "2.18.0",
+    "sharp": "0.35.5",
     "zod": "4.4.3"
   },
   "devDependencies": {

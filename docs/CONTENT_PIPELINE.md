@@ -11,6 +11,27 @@
 
 Vercel invokes `/api/cron/ingest` once per day. The endpoint is protected by `CRON_SECRET`. Administrators also have a `Sync now` control for an immediate run.
 
+## Initializing the complete archive
+
+The normal cron and **Sync Drive now** action intentionally attempt only
+`INGEST_MAX_DOCUMENTS_PER_RUN` new or failed documents (one by default). An approved
+administrator can choose **Initialize all articles** in the admin workspace to process every eligible
+DOCX currently visible to the restricted Drive service account. The operation uses the same
+`drive-{fileId}` document identity and `(fileId, checksum)` ingestion job identity as routine syncs, so
+running it again skips unchanged work.
+
+For local administration, start the web app, obtain a fresh Firebase ID token for an email in
+`ADMIN_EMAILS`, and run:
+
+```powershell
+$env:CLIMATE_NOTE_ADMIN_ID_TOKEN = "<fresh-admin-id-token>"
+pnpm articles:initialize
+```
+
+The command targets `http://localhost:3000` by default. Remote initialization is blocked unless the
+operator sets `CLIMATE_NOTE_ADMIN_URL`, sets `CONFIRM_ARTICLE_INITIALIZATION=YES`, and passes
+`--allow-remote`. This is a server-side admin operation; the iPhone client never seeds Firestore.
+
 ## State machine
 
 ```text
@@ -69,9 +90,29 @@ Impact arithmetic is deterministic rather than generative. Version 1 supports U.
 
 ### Article imagery
 
-Article image search and generation are disabled for the initial App Store release. Articles publish
-with their editor-approved text, AI summary, and grounded action suggestions, but without a cover or
-inline image. A future release can reintroduce imagery after editorial relevance review is available.
+The server automatically searches Pexels for licensed editorial photography. It retrieves up to 12
+landscape candidates and ranks them by article relevance, 16:9 crop suitability, resolution, metadata
+quality, and recent reuse. It rejects undersized files, recently reused assets, metadata that suggests
+logos or watermarks, and metadata indicating recognizable people. Fully automatic publishing avoids
+person-led imagery because it cannot independently verify model releases or contextual endorsement. The highest-scoring
+eligible candidate becomes the cover. If it fails download or decoding, the system tries the remaining
+top-three shortlist in rank order; if none clears every gate, the article publishes text-only.
+
+The provider key is server-side only. Downloads may come only from the exact Pexels image CDN host,
+with a two-redirect limit, a 12 MB transfer limit, a 30 megapixel decoded-image limit, and JPEG/PNG/WebP
+content types. Every accepted file is decoded, center-cropped to 1600×900, re-encoded as a JPEG without
+source metadata, and addressed by its SHA-256 content hash before storage.
+
+The public cover keeps the photographer, Pexels source page, license link, provider asset ID, retrieval
+time, crop, dimensions, and content hash. A private media record preserves the search query and selection
+decision for provenance. Reprocessing preserves a valid approved cover unless its search query changes or
+an administrator requests replacement. An administrator can remove a cover immediately or request a new
+selection on the next ingestion run. Provider, network, validation, or storage failures preserve a valid
+existing cover and otherwise fall back to text-only publishing.
+
+Pexels images remain copyrighted and are used under the provider license; they are not described as
+“copyright-free.” Attribution and provenance reduce licensing risk, while the removal control supports a
+prompt takedown response. Legal approval of the provider terms and planned use remains a release gate.
 
 ## Publication gate
 
@@ -82,6 +123,9 @@ Automatic publication requires all of the following:
 - valid block structure and source URLs
 - summary schema passes
 - exactly three grounded actions pass validation
-- no provider error or unresolved safety flag
+- no unresolved text-enrichment provider error or safety flag
+
+The photo provider is not a publication blocker: an image failure produces a warning and the text-only
+article may still publish when every editorial and safety requirement above passes.
 
 Otherwise the article remains a draft and the admin dashboard shows the exact failing stage.

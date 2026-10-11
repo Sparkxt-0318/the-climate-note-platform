@@ -28,6 +28,14 @@ const sourceHeadingPattern = /^(sources?|references?|works cited)\s*:?[\s]*$/i;
 const citationParagraphPattern = /^\[?\d+\]?\s*[-–—:]?\s*https?:\/\//i;
 const urlPattern = /https?:\/\/[^\s<>)\]]+/g;
 
+function isSecureWebURL(value: string) {
+  try {
+    return new URL(value).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 function cleanText(value: string) {
   return value.replace(/\u00a0/g, " ").replace(/[ \t]+/g, " ").trim();
 }
@@ -110,7 +118,7 @@ function candidatesFromHtml(html: string): Candidate[] {
 }
 
 function dedupeLinks(links: ParsedSourceLink[]) {
-  return [...new Map(links.map((link) => [link.url, link])).values()];
+  return [...new Map(links.filter((link) => isSecureWebURL(link.url)).map((link) => [link.url, link])).values()];
 }
 
 export function normalizeCandidates(candidates: Candidate[], fallbackTitle?: string) {
@@ -162,9 +170,14 @@ export function normalizeCandidates(candidates: Candidate[], fallbackTitle?: str
   }
 
   if (blocks.length === 0) throw new Error("The DOCX contains a title but no article body.");
-  if (sourceLinks.length === 0) warnings.push("No source links were detected.");
+  const insecureSourceCount = sourceLinks.filter((link) => !isSecureWebURL(link.url)).length;
+  const secureSourceLinks = dedupeLinks(sourceLinks);
+  if (insecureSourceCount > 0) {
+    warnings.push(`${insecureSourceCount} insecure source link${insecureSourceCount === 1 ? " was" : "s were"} omitted; sources must use HTTPS.`);
+  }
+  if (secureSourceLinks.length === 0) warnings.push("No secure source links were detected.");
 
-  return { title, blocks, sourceLinks: dedupeLinks(sourceLinks), warnings };
+  return { title, blocks, sourceLinks: secureSourceLinks, warnings };
 }
 
 function blockText(block: ArticleBlock) {

@@ -4,7 +4,7 @@ import CryptoKit
 @preconcurrency import FirebaseAuth
 import FirebaseCore
 import FirebaseMessaging
-import GoogleSignIn
+@preconcurrency import GoogleSignIn
 import UIKit
 
 @MainActor
@@ -35,13 +35,24 @@ final class AuthService: NSObject, ObservableObject {
         }
     }
 
+    var isGuest: Bool { user?.isAnonymous == true }
+
+    /// Creates an anonymous account so an explicit guest save retains a private UID.
+    func signInAsGuest() async {
+        guard beginAuthentication(), user?.isAnonymous != true else { return }
+        isWorking = true
+        defer { isWorking = false }
+        do { try await Auth.auth().signInAnonymously() }
+        catch { show(error, fallback: "A guest account could not be created. Check your connection and try again.") }
+    }
+
     func signInWithGoogle() async {
         guard beginAuthentication() else { return }
         isWorking = true
         defer { isWorking = false }
         do {
             let authorization = try await googleAuthorization()
-            try await Auth.auth().signIn(with: authorization.credential)
+            try await applyCredential(authorization.credential)
         } catch {
             show(error, fallback: "Google Sign-In could not be completed. Please check your connection and try again.")
         }
@@ -52,7 +63,7 @@ final class AuthService: NSObject, ObservableObject {
         let nonce = Self.randomNonce()
         currentNonce = nonce
         appleOperation = .signIn
-        request.requestedScopes = [.fullName, .email]
+        request.requestedScopes = [.email]
         request.nonce = Self.sha256(nonce)
         isWorking = true
     }
@@ -110,13 +121,34 @@ final class AuthService: NSObject, ObservableObject {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
             let (data, response) = try await URLSession.shared.data(for: request)
             guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw AuthError.exportFailed }
-            let url = FileManager.default.temporaryDirectory.appending(path: "the-climate-note-export.json")
-            try data.write(to: url, options: .atomic)
+            Self.removeStaleExportFiles()
+            let url = FileManager.default.temporaryDirectory.appending(path: "climate-note-export-\(UUID().uuidString).json")
+            try data.write(to: url, options: [.atomic, .completeFileProtection])
+            var values = URLResourceValues(); values.isExcludedFromBackup = true
+            var writableURL = url; try? writableURL.setResourceValues(values)
             return url
         } catch {
             errorMessage = "Your export could not be prepared. Please try again."
             return nil
         }
+    }
+
+    static func removeExportFile(_ url: URL?) { guard let url else { return }; try? FileManager.default.removeItem(at: url) }
+    static func removeStaleExportFiles() {
+        guard let files = try? FileManager.default.contentsOfDirectory(at: FileManager.default.temporaryDirectory, includingPropertiesForKeys: nil) else { return }
+        for file in files where file.lastPathComponent.hasPrefix("climate-note-export-") || file.lastPathComponent == "the-climate-note-export.json" { try? FileManager.default.removeItem(at: file) }
+    }
+
+    private func applyCredential(_ credential: AuthCredential) async throws {
+        if let user, user.isAnonymous {
+            do { try await user.link(with: credential); return }
+            catch {
+                let error = error as NSError
+                if error.domain == AuthErrorDomain, [17025, 17007, 17015].contains(error.code) { try await Auth.auth().signIn(with: credential); return }
+                throw error
+            }
+        }
+        try await Auth.auth().signIn(with: credential)
     }
 
     private static func sha256(_ input: String) -> String {
@@ -162,7 +194,7 @@ final class AuthService: NSObject, ObservableObject {
         currentNonce = nonce
         appleOperation = .deleteAccount
         let request = ASAuthorizationAppleIDProvider().createRequest()
-        request.requestedScopes = [.fullName, .email]
+        request.requestedScopes = []
         request.nonce = Self.sha256(nonce)
         let controller = ASAuthorizationController(authorizationRequests: [request])
         controller.delegate = self
@@ -191,12 +223,12 @@ final class AuthService: NSObject, ObservableObject {
             let credential = OAuthProvider.appleCredential(
                 withIDToken: token,
                 rawNonce: nonce,
-                fullName: appleCredential.fullName
+                fullName: nil
             )
 
             switch operation {
             case .signIn:
-                try await Auth.auth().signIn(with: credential)
+                try await applyCredential(credential)
             case .deleteAccount:
                 guard let user else { return }
                 guard
@@ -213,10 +245,11 @@ final class AuthService: NSObject, ObservableObject {
     }
 
     private func deleteAccountFromServer(_ user: User) async throws {
-        let token = try await user.getIDToken()
+        let token = try await user.getIDToken(forcingRefresh: true)
         var request = URLRequest(url: AppConfig.apiBaseURL.appending(path: "/api/account/delete"))
         request.httpMethod = "POST"
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("delete-account", forHTTPHeaderField: "X-Climate-Note-Confirm-Delete")
         let (_, response) = try await URLSession.shared.data(for: request)
         guard (response as? HTTPURLResponse)?.statusCode == 200 else {
             throw AuthError.accountDeletionFailed
@@ -224,6 +257,7 @@ final class AuthService: NSObject, ObservableObject {
         Messaging.messaging().isAutoInitEnabled = false
         try? await Messaging.messaging().deleteData()
         UserDefaults.standard.set(false, forKey: "climate-note.weekly-notifications")
+        DraftOperationStore.shared.purgeAccount(userID: user.uid)
         try? Auth.auth().signOut()
     }
 

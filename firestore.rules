@@ -9,22 +9,201 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == userId;
     }
 
+    function validImpactPreference() {
+      return request.resource.data.keys().hasOnly(["includeInCommunityImpact"])
+        && request.resource.data.includeInCommunityImpact is bool;
+    }
+
+    function validNotificationPreferences(value) {
+      return value is map
+        && value.keys().hasOnly(["weeklyArticle"])
+        && (!("weeklyArticle" in value) || value.weeklyArticle is bool);
+    }
+
+    function validUserProfile() {
+      return request.resource.data.keys().hasOnly([
+          "displayName", "email", "providerIds", "role", "notificationPreferences",
+          "createdAt", "updatedAt", "deletionRequestedAt"
+        ])
+        && (!("displayName" in request.resource.data)
+          || (request.resource.data.displayName is string
+            && request.resource.data.displayName.size() <= 120))
+        && (!("email" in request.resource.data)
+          || (request.resource.data.email is string
+            && request.resource.data.email.size() <= 320
+            && request.resource.data.email == request.auth.token.email))
+        && (!("providerIds" in request.resource.data)
+          || (request.resource.data.providerIds is list
+            && request.resource.data.providerIds.size() <= 10))
+        && (!("role" in request.resource.data)
+          || request.resource.data.role in ["reader", "editor", "admin"])
+        && (!("notificationPreferences" in request.resource.data)
+          || validNotificationPreferences(request.resource.data.notificationPreferences))
+        && (!("createdAt" in request.resource.data)
+          || request.resource.data.createdAt is timestamp)
+        && (!("updatedAt" in request.resource.data)
+          || request.resource.data.updatedAt is timestamp)
+        && (!("deletionRequestedAt" in request.resource.data)
+          || request.resource.data.deletionRequestedAt == null
+          || request.resource.data.deletionRequestedAt is timestamp);
+    }
+
+    function validImpactEstimate(value) {
+      return value is map
+        && value.keys().hasOnly([
+          "value", "unit", "label", "methodology", "factorID", "metric",
+          "factorVersion", "input"
+        ])
+        && value.keys().hasAll(["value", "unit", "label", "methodology", "factorID"])
+        && value.value is number
+        && value.value >= 0
+        && value.value <= 1000000
+        && value.unit is string && value.unit.size() <= 40
+        && value.label is string && value.label.size() <= 160
+        && value.methodology is string && value.methodology.size() <= 1000
+        && value.factorID is string && value.factorID.size() <= 160
+        && (!("metric" in value) || (value.metric is string && value.metric.size() <= 40))
+        && (!("factorVersion" in value)
+          || (value.factorVersion is string && value.factorVersion.size() <= 80))
+        && (!("input" in value)
+          || (value.input is map
+            && value.input.keys().hasOnly(["quantity", "unit"])
+            && value.input.keys().hasAll(["quantity", "unit"])
+            && value.input.quantity is number
+            && value.input.quantity >= 0
+            && value.input.quantity <= 1000000
+            && value.input.unit is string
+            && value.input.unit.size() <= 40));
+    }
+
+    function validActionLog(userId) {
+      return request.resource.data.keys().hasOnly([
+          "userID", "articleID", "articleTitle", "actionID", "title", "detail",
+          "category", "status", "kind", "createdAt", "completedAt", "impactEstimate",
+          "reflectionText", "reflectionUpdatedAt"
+        ])
+        && request.resource.data.keys().hasAll([
+          "userID", "articleID", "articleTitle", "actionID", "title", "detail",
+          "category", "status", "createdAt"
+        ])
+        && request.resource.data.userID == userId
+        && request.resource.data.status in ["planned", "completed"]
+        && ((request.resource.data.status == "completed"
+              && ("completedAt" in request.resource.data)
+              && request.resource.data.completedAt is timestamp)
+          || (request.resource.data.status == "planned"
+              && (!("completedAt" in request.resource.data)
+                || request.resource.data.completedAt == null)))
+        && request.resource.data.articleID is string && request.resource.data.articleID.size() <= 160
+        && request.resource.data.articleTitle is string && request.resource.data.articleTitle.size() <= 220
+        && request.resource.data.actionID is string && request.resource.data.actionID.size() <= 160
+        && request.resource.data.title is string && request.resource.data.title.size() <= 160
+        && request.resource.data.detail is string && request.resource.data.detail.size() <= 2000
+        && request.resource.data.category is string && request.resource.data.category.size() <= 40
+        && request.resource.data.createdAt is timestamp
+        && (!("kind" in request.resource.data)
+          || request.resource.data.kind in ["action", "reflection"])
+        && (!("kind" in request.resource.data)
+          || request.resource.data.kind != "reflection"
+          || request.resource.data.status == "planned")
+        && (!("completedAt" in request.resource.data)
+          || request.resource.data.completedAt == null
+          || request.resource.data.completedAt is timestamp)
+        && (!("impactEstimate" in request.resource.data)
+          || validImpactEstimate(request.resource.data.impactEstimate))
+        && (!("reflectionText" in request.resource.data)
+          || (request.resource.data.reflectionText is string
+            && request.resource.data.reflectionText.size() <= 2000))
+        && (!("reflectionUpdatedAt" in request.resource.data)
+          || request.resource.data.reflectionUpdatedAt is timestamp);
+    }
+
     match /articles/{articleId} {
       allow read: if resource.data.status == "published";
       allow write: if false;
     }
 
     match /users/{userId} {
-      allow read, create, update: if owns(userId);
+      allow read: if owns(userId);
+      allow create: if owns(userId)
+        && validUserProfile()
+        && !("role" in request.resource.data);
+      allow update: if owns(userId)
+        && validUserProfile()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "displayName", "email", "providerIds", "notificationPreferences",
+          "updatedAt", "deletionRequestedAt"
+        ]);
       allow delete: if false;
 
       match /notes/{noteId} {
-        allow read, write: if owns(userId);
+        // Kept readable for legacy exports. Current clients write structured
+        // actionLogs; an unbounded legacy note document must not remain a
+        // general-purpose storage surface.
+        allow read: if owns(userId);
+        allow write: if false;
       }
 
       match /actionLogs/{logId} {
-        allow read, write: if owns(userId);
+        allow read: if owns(userId);
+        allow create: if owns(userId)
+          && validActionLog(userId)
+          && request.resource.data.status == "planned"
+          && (!("completedAt" in request.resource.data)
+            || request.resource.data.completedAt == null);
+        allow update: if owns(userId)
+          && validActionLog(userId)
+          && resource.data.userID == userId
+          && request.resource.data.articleID == resource.data.articleID
+          && request.resource.data.actionID == resource.data.actionID
+          && (request.resource.data.status == resource.data.status
+            || (((!("kind" in resource.data)) || resource.data.kind == "action")
+              && ((resource.data.status == "planned"
+                  && request.resource.data.status == "completed")
+                || (resource.data.status == "completed"
+                  && request.resource.data.status == "planned"))))
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            "status", "completedAt", "reflectionText", "reflectionUpdatedAt"
+          ]);
+        allow delete: if owns(userId);
       }
+
+      match /preferences/impact {
+        allow read: if owns(userId);
+        allow create, update: if owns(userId) && validImpactPreference();
+        allow delete: if owns(userId);
+      }
+    }
+
+    // This document is intentionally public, but the Functions codebase is its only writer.
+    match /communityImpact/current {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Receipts, contributor documents, totals, and reconciliation jobs stay server-only.
+    match /impactReceipts/{receiptId} {
+      allow read, write: if false;
+    }
+
+    match /impactContributors/{userId} {
+      allow read, write: if false;
+    }
+
+    match /impactInternal/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /impactReconciliationJobs/{jobId} {
+      allow read, write: if false;
+    }
+
+    match /impactBackfill/{documentId} {
+      allow read, write: if false;
+    }
+
+    match /impactAccountDeletionRequests/{userId} {
+      allow read, write: if false;
     }
 
     match /{document=**} {
